@@ -36,6 +36,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
 if not ALLOWED_HOSTS:
     raise RuntimeError("ALLOWED_HOSTS environment variable is not set. Please set it in your .env file or environment.")
 
