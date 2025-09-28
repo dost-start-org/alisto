@@ -1,0 +1,1 @@
+web: gunicorn nstw_backend.wsgi --log-file -
