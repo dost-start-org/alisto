@@ -93,6 +93,68 @@ class EmergencyReport(models.Model):
     def __str__(self):
         return f"Report {self.report_id} - {self.report_type} ({self.status})"
 
+class VerificationRequest(models.Model):
+    def get_verification_status(self):
+        total = self.responses.count()
+        if total == 0:
+            return 'Unverified', 0
+        yes_count = self.responses.filter(response='Yes').count()
+        no_count = self.responses.filter(response='No').count()
+        yes_ratio = yes_count / total
+        if yes_ratio >= 0.7 and yes_count >= 3:
+            return 'Verified', yes_ratio
+        elif no_count / total >= 0.7 and no_count >= 3:
+            return 'Flagged as False', yes_ratio
+        else:
+            return 'Unverified', yes_ratio
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Completed', 'Completed'),
+        ('Expired', 'Expired'),
+    ]
+    emergency_report = models.ForeignKey(
+        EmergencyReport,
+        on_delete=models.CASCADE,
+        related_name='verification_requests',
+        help_text="The emergency report this verification request is for."
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    targeted_users = models.ManyToManyField(
+        'accounts.UserProfile',
+        related_name='verification_requests',
+        help_text="Users who received this verification request."
+    )
+
+    def __str__(self):
+        return f"VerificationRequest for {self.emergency_report} at {self.requested_at}"
+
+class VerificationResponse(models.Model):
+    RESPONSE_CHOICES = [
+        ('Yes', 'Yes'),
+        ('No', 'No'),
+    ]
+    verification_request = models.ForeignKey(
+        VerificationRequest,
+        on_delete=models.CASCADE,
+        related_name='responses',
+        help_text="The verification request this response is for."
+    )
+    user = models.ForeignKey(
+        'accounts.UserProfile',
+        on_delete=models.CASCADE,
+        related_name='verification_responses',
+        help_text="The user who responded."
+    )
+    response = models.CharField(max_length=3, choices=RESPONSE_CHOICES)
+    responded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('verification_request', 'user')
+
+    def __str__(self):
+        return f"{self.user} responded {self.response} to {self.verification_request}"
+
 class ReportMedia(models.Model):
     MEDIA_TYPE_CHOICES = [
         ('Image', 'Image'),

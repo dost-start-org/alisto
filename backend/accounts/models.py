@@ -34,6 +34,8 @@ class User(AbstractUser):
 
 
 class UserProfile(models.Model):
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude of the user's location.")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude of the user's location.")
     AUTHORITY_LEVEL_CHOICES = [
         ('Responder', 'Responder'),
         ('User', 'User'),
