@@ -50,7 +50,7 @@ class SendVerificationRequestView(APIView):
         )
         nearby_users = []
         for user in users:
-            if hasattr(user, 'latitude') and hasattr(user, 'longitude') and user.latitude and user.longitude:
+            if user.latitude is not None and user.longitude is not None:
                 dist = haversine(report.latitude, report.longitude, user.latitude, user.longitude)
                 if dist <= radius_km:
                     nearby_users.append(user)
@@ -102,7 +102,10 @@ class UpdateVerificationStatusView(APIView):
         vreq.save()
         # Update EmergencyReport with verification status (custom field or notes)
         report = vreq.emergency_report
-        report.resolution_notes += f"\nVerification status: {status_str} ({yes_ratio*100:.0f}% yes)"
+        if not report.resolution_notes:
+            report.resolution_notes = f"Verification status: {status_str} ({yes_ratio*100:.0f}% yes)"
+        else:
+            report.resolution_notes += f"\nVerification status: {status_str} ({yes_ratio*100:.0f}% yes)"
         report.save()
         # Notify reporter and responders of verification status
         notify_user(report.reported_by, f"Verification status for your report {report.report_id}: {status_str}")

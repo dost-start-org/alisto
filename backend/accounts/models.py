@@ -34,8 +34,6 @@ class User(AbstractUser):
 
 
 class UserProfile(models.Model):
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude of the user's location.")
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude of the user's location.")
     AUTHORITY_LEVEL_CHOICES = [
         ('Responder', 'Responder'),
         ('User', 'User'),
@@ -57,6 +55,8 @@ class UserProfile(models.Model):
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     email_verified = models.BooleanField(default=False)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude of the user's location.")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude of the user's location.")
 
     def __str__(self):
         return f"{self.full_name} - {self.authority_level}"

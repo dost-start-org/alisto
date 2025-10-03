@@ -94,6 +94,28 @@ class EmergencyReport(models.Model):
         return f"Report {self.report_id} - {self.report_type} ({self.status})"
 
 class VerificationRequest(models.Model):
+    VERIFICATION_RATIO_THRESHOLD = 0.7
+    VERIFICATION_MIN_RESPONSES = 3
+
+    def get_verification_status(self):
+        total = self.responses.count()
+        if total == 0:
+            return 'Unverified', 0
+        yes_count = self.responses.filter(response='Yes').count()
+        no_count = self.responses.filter(response='No').count()
+        yes_ratio = yes_count / total
+        if yes_ratio >= self.VERIFICATION_RATIO_THRESHOLD and yes_count >= self.VERIFICATION_MIN_RESPONSES:
+            return 'Verified', yes_ratio
+        elif no_count / total >= self.VERIFICATION_RATIO_THRESHOLD and no_count >= self.VERIFICATION_MIN_RESPONSES:
+            return 'Flagged as False', yes_ratio
+        else:
+            return 'Unverified', yes_ratio
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Completed', 'Completed'),
+        ('Expired', 'Expired'),
+    ]
+
     def get_verification_status(self):
         total = self.responses.count()
         if total == 0:
@@ -107,24 +129,6 @@ class VerificationRequest(models.Model):
             return 'Flagged as False', yes_ratio
         else:
             return 'Unverified', yes_ratio
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Completed', 'Completed'),
-        ('Expired', 'Expired'),
-    ]
-    emergency_report = models.ForeignKey(
-        EmergencyReport,
-        on_delete=models.CASCADE,
-        related_name='verification_requests',
-        help_text="The emergency report this verification request is for."
-    )
-    requested_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-    targeted_users = models.ManyToManyField(
-        'accounts.UserProfile',
-        related_name='verification_requests',
-        help_text="Users who received this verification request."
-    )
 
     def __str__(self):
         return f"VerificationRequest for {self.emergency_report} at {self.requested_at}"
