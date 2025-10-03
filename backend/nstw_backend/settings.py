@@ -35,10 +35,10 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
-print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
-if not ALLOWED_HOSTS:
+allowed_hosts_env = os.environ.get('ALLOWED_HOSTS')
+if not allowed_hosts_env:
     raise RuntimeError("ALLOWED_HOSTS environment variable is not set. Please set it in your .env file or environment.")
+ALLOWED_HOSTS = allowed_hosts_env.split(',')
 
 
 
@@ -95,7 +95,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Static files (CSS, JavaScript, Images)
