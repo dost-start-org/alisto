@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EmergencyHotline, PublicAnnouncement
+from .models import EmergencyContact, ContactRedirection
 
-admin.site.register(EmergencyHotline)
-admin.site.register(PublicAnnouncement)
+admin.site.register(EmergencyContact)
+admin.site.register(ContactRedirection)
