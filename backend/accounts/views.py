@@ -12,36 +12,9 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.generics import UpdateAPIView
 from django.contrib.auth import authenticate, login, logout
-from .models import User, UserProfile
+from .models import User
 from .serializers import RegisterSerializer, UserSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, EmailVerificationRequestSerializer, EmailVerificationConfirmSerializer
 from .permissions import IsLGUAdministrator
-
-# --- LGU Admin: List all pending users ---
-class PendingUsersListAPIView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsLGUAdministrator]
-    serializer_class = UserSerializer
-
-    def get_queryset(self):
-        return User.objects.filter(profile__status='pending')
-
-# --- LGU Admin: Approve or reject a user ---
-class UserStatusUpdateSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=[('approved', 'approved'), ('rejected', 'rejected')])
-
-class UserStatusUpdateAPIView(UpdateAPIView):
-    permission_classes = [IsAuthenticated, IsLGUAdministrator]
-    serializer_class = UserStatusUpdateSerializer
-    queryset = UserProfile.objects.all()
-    lookup_field = 'pk'
-
-    def update(self, request, *args, **kwargs):
-        profile = self.get_object()
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        profile.status = serializer.validated_data['status']
-        profile.save()
-        return Response({'ok': True, 'user': profile.user.email, 'status': profile.status})
-
 
 class RegisterAPIView(APIView):
     permission_classes = [permissions.AllowAny]
