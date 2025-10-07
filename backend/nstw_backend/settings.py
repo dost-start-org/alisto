@@ -61,10 +61,6 @@ INSTALLED_APPS = [
     'emergencies',
     'public_info',
     'agencies',
-
-    # Third-party
-    'rest_framework',
-    'rest_framework_simplejwt',
 ]
 # REST Framework & SimpleJWT configuration
 REST_FRAMEWORK = {
@@ -193,20 +189,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication', 
     ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-}
-
-# JWT settings
-from datetime import timedelta
-SIMPLE_JWT = {
+# REST Framework settings
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+AUTH_USER_MODEL = 'accounts.User'
+# JWT settings
 
 AUTH_USER_MODEL = 'accounts.User'
