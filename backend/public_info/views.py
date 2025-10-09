@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions
+from drf_yasg.utils import swagger_auto_schema
 from .models import EmergencyContact, ContactRedirection
 from .serializers import (
     EmergencyContactSerializer, EmergencyContactDetailSerializer,
@@ -16,6 +17,25 @@ class EmergencyContactList(generics.ListCreateAPIView):
     queryset = EmergencyContact.objects.all()
     serializer_class = EmergencyContactSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @swagger_auto_schema(
+        operation_summary="List emergency contacts",
+        operation_description="Get a list of all emergency contacts in the system.",
+        tags=['Emergency Contacts'],
+        responses={200: EmergencyContactSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Create emergency contact",
+        operation_description="Add a new emergency contact to the system.",
+        tags=['Emergency Contacts'],
+        request_body=EmergencyContactSerializer,
+        responses={201: EmergencyContactSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 class EmergencyContactDetail(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -35,6 +55,44 @@ class EmergencyContactDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EmergencyContactDetailSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+    @swagger_auto_schema(
+        operation_summary="Get emergency contact details",
+        operation_description="Get detailed information about a specific emergency contact.",
+        tags=['Emergency Contacts'],
+        responses={200: EmergencyContactDetailSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Update emergency contact",
+        operation_description="Update the information of a specific emergency contact.",
+        tags=['Emergency Contacts'],
+        request_body=EmergencyContactDetailSerializer,
+        responses={200: EmergencyContactDetailSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Partially update emergency contact",
+        operation_description="Update specific fields of an emergency contact.",
+        tags=['Emergency Contacts'],
+        request_body=EmergencyContactDetailSerializer,
+        responses={200: EmergencyContactDetailSerializer}
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Delete emergency contact",
+        operation_description="Remove a specific emergency contact from the system.",
+        tags=['Emergency Contacts'],
+        responses={204: "No Content"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
 class ContactRedirectionList(generics.ListCreateAPIView):
     """
     list:
@@ -46,6 +104,25 @@ class ContactRedirectionList(generics.ListCreateAPIView):
     queryset = ContactRedirection.objects.all()
     serializer_class = ContactRedirectionSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @swagger_auto_schema(
+        operation_summary="List contact redirections",
+        operation_description="Get a list of all contact redirections for emergency types.",
+        tags=['Contact Redirections'],
+        responses={200: ContactRedirectionSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Create contact redirection",
+        operation_description="Create a new contact redirection for an emergency type.",
+        tags=['Contact Redirections'],
+        request_body=ContactRedirectionSerializer,
+        responses={201: ContactRedirectionSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
 class ContactRedirectionDetail(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -64,3 +141,41 @@ class ContactRedirectionDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = ContactRedirection.objects.all()
     serializer_class = ContactRedirectionSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @swagger_auto_schema(
+        operation_summary="Get contact redirection details",
+        operation_description="Get details about a specific contact redirection.",
+        tags=['Contact Redirections'],
+        responses={200: ContactRedirectionSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Update contact redirection",
+        operation_description="Update a contact redirection.",
+        tags=['Contact Redirections'],
+        request_body=ContactRedirectionSerializer,
+        responses={200: ContactRedirectionSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Partially update contact redirection",
+        operation_description="Update specific fields of a contact redirection.",
+        tags=['Contact Redirections'],
+        request_body=ContactRedirectionSerializer,
+        responses={200: ContactRedirectionSerializer}
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Delete contact redirection",
+        operation_description="Remove a contact redirection.",
+        tags=['Contact Redirections'],
+        responses={204: "No Content"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
