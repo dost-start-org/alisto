@@ -38,6 +38,9 @@ urlpatterns = [
     # API routes
     path('api/auth/', include('accounts.urls')),
     path('api/emergencies/', include('emergencies.urls')),
+    path('api/agencies/', include('agencies.urls')),
+    path('api/public-info/', include('public_info.urls')),
+    path('api/responders/', include('responders.urls')),
     
     # Swagger documentation
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),

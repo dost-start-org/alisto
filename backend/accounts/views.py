@@ -12,7 +12,9 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.generics import UpdateAPIView
 from django.contrib.auth import authenticate, login, logout
-from .models import User
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from .models import User, UserProfile
 from .serializers import RegisterSerializer, UserSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, EmailVerificationRequestSerializer, EmailVerificationConfirmSerializer
 from .permissions import IsLGUAdministrator
 
@@ -20,6 +22,46 @@ class RegisterAPIView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'register'
+
+    @swagger_auto_schema(
+        operation_description="Register a new user account",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password', 'first_name', 'last_name'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='User password'),
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description='User first name'),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description='User last name'),
+                'full_name': openapi.Schema(type=openapi.TYPE_STRING, description='User full name'),
+                'authority_level': openapi.Schema(
+                    type=openapi.TYPE_STRING, 
+                    description='User authority level',
+                    enum=['Responder', 'User', 'LGU Administrator']
+                ),
+                'contact_number': openapi.Schema(type=openapi.TYPE_STRING, description='User contact number'),
+                'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='User date of birth (YYYY-MM-DD)'),
+                'address': openapi.Schema(type=openapi.TYPE_STRING, description='User address'),
+                'emergency_contact_name': openapi.Schema(type=openapi.TYPE_STRING, description='Emergency contact name'),
+                'emergency_contact_number': openapi.Schema(type=openapi.TYPE_STRING, description='Emergency contact number')
+            }
+        ),
+        responses={
+            201: openapi.Response(
+                description="User registered successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            400: "Invalid input or email already registered"
+        },
+    )
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)

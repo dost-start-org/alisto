@@ -32,4 +32,33 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.first_name} {self.last_name} <{self.email}>"
 
+class UserProfile(models.Model):
+    AUTHORITY_CHOICES = [
+        ('Responder', 'Responder'),
+        ('User', 'User'),
+        ('LGU Administrator', 'LGU Administrator')
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Latitude of the user's location.")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude of the user's location.")
+    full_name = models.CharField(max_length=100)
+    authority_level = models.CharField(max_length=20, choices=AUTHORITY_CHOICES)
+    contact_number = models.CharField(max_length=15)
+    date_of_birth = models.DateField()
+    address = models.TextField(max_length=100)
+    emergency_contact_name = models.CharField(max_length=100, null=True, blank=True)
+    emergency_contact_number = models.CharField(max_length=15, null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    email_verified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.full_name} ({self.user.email})"
+
 

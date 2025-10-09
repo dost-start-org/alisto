@@ -9,6 +9,13 @@ from .serializers import (
 )
 
 class EmergencyTypeList(generics.ListCreateAPIView):
+    """
+    list:
+    Return a list of all emergency types.
+
+    create:
+    Create a new emergency type.
+    """
     queryset = EmergencyType.objects.all()
     serializer_class = EmergencyTypeSerializer
 
