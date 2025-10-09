@@ -12,7 +12,9 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.generics import UpdateAPIView
 from django.contrib.auth import authenticate, login, logout
-from .models import User
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from .models import User, UserProfile
 from .serializers import RegisterSerializer, UserSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, EmailVerificationRequestSerializer, EmailVerificationConfirmSerializer
 from .permissions import IsLGUAdministrator
 
@@ -20,6 +22,46 @@ class RegisterAPIView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'register'
+
+    @swagger_auto_schema(
+        operation_description="Register a new user account",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password', 'first_name', 'last_name'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='User password'),
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description='User first name'),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description='User last name'),
+                'full_name': openapi.Schema(type=openapi.TYPE_STRING, description='User full name'),
+                'authority_level': openapi.Schema(
+                    type=openapi.TYPE_STRING, 
+                    description='User authority level',
+                    enum=['Responder', 'User', 'LGU Administrator']
+                ),
+                'contact_number': openapi.Schema(type=openapi.TYPE_STRING, description='User contact number'),
+                'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='User date of birth (YYYY-MM-DD)'),
+                'address': openapi.Schema(type=openapi.TYPE_STRING, description='User address'),
+                'emergency_contact_name': openapi.Schema(type=openapi.TYPE_STRING, description='Emergency contact name'),
+                'emergency_contact_number': openapi.Schema(type=openapi.TYPE_STRING, description='Emergency contact number')
+            }
+        ),
+        responses={
+            201: openapi.Response(
+                description="User registered successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            400: "Invalid input or email already registered"
+        },
+    )
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -67,6 +109,34 @@ class LoginAPIView(APIView):
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'login'
 
+    @swagger_auto_schema(
+        operation_description="Login with email and password to obtain JWT tokens",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='User password'),
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Login successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='JWT refresh token'),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING, description='JWT access token')
+                    }
+                )
+            ),
+            400: "Invalid credentials",
+            403: "Account not approved"
+        }
+    )
+
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
@@ -97,6 +167,28 @@ class PasswordResetRequestAPIView(APIView):
     throttle_classes = [throttling.AnonRateThrottle]
     throttle_scope = 'password_reset_request'
 
+    @swagger_auto_schema(
+        operation_description="Request a password reset email",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='Email address of the account to reset')
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Password reset email sent (if account exists)",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            )
+        }
+    )
+
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -123,6 +215,31 @@ class PasswordResetConfirmAPIView(APIView):
     throttle_classes = [throttling.AnonRateThrottle]
     throttle_scope = 'password_reset_confirm'
 
+    @swagger_auto_schema(
+        operation_description="Confirm password reset with token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['uid', 'token', 'password'],
+            properties={
+                'uid': openapi.Schema(type=openapi.TYPE_STRING, description='User ID from reset link'),
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Reset token from email link'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='New password')
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Password reset successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            ),
+            400: "Invalid or expired token"
+        }
+    )
+
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -146,6 +263,28 @@ class EmailVerificationRequestAPIView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.AnonRateThrottle]
     throttle_scope = 'email_verification_request'
+
+    @swagger_auto_schema(
+        operation_description="Request email verification link",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='Email address to verify')
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Verification email sent (if account exists)",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            )
+        }
+    )
 
     def post(self, request):
         serializer = EmailVerificationRequestSerializer(data=request.data)
@@ -173,6 +312,30 @@ class EmailVerificationConfirmAPIView(APIView):
     throttle_classes = [throttling.AnonRateThrottle]
     throttle_scope = 'email_verification_confirm'
 
+    @swagger_auto_schema(
+        operation_description="Confirm email verification with token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['uid', 'token'],
+            properties={
+                'uid': openapi.Schema(type=openapi.TYPE_STRING, description='User ID from verification link'),
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description='Verification token from email link')
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Email verification successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            ),
+            400: "Invalid or expired token"
+        }
+    )
+
     def post(self, request):
         serializer = EmailVerificationConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -193,18 +356,51 @@ class EmailVerificationConfirmAPIView(APIView):
 
 
 class LogoutAPIView(APIView):
-	# Require authenticated user for logout
-	permission_classes = [IsAuthenticated]
-	throttle_scope = 'login'
+    # Require authenticated user for logout
+    permission_classes = [IsAuthenticated]
+    throttle_scope = 'login'
 
-	def post(self, request):
-		# Clear server-side session
-		logout(request)
-		return Response({'ok': True})
+    @swagger_auto_schema(
+        operation_description="Logout the current user",
+        responses={
+            200: openapi.Response(
+                description="Logout successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            ),
+            401: "Not authenticated"
+        }
+    )
+    def post(self, request):
+        # Clear server-side session
+        logout(request)
+        return Response({'ok': True})
 
 
 class MeAPIView(APIView):
-	permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
-	def get(self, request):
-		return Response(UserSerializer(request.user).data)
+    @swagger_auto_schema(
+        operation_description="Get current user information",
+        responses={
+            200: openapi.Response(
+                description="Current user details",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL),
+                        'first_name': openapi.Schema(type=openapi.TYPE_STRING),
+                        'last_name': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            401: "Not authenticated"
+        }
+    )
+    def get(self, request):
+        return Response(UserSerializer(request.user).data)

@@ -15,21 +15,25 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='EmergencyContact',
+            name='Agency',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=255)),
-                ('contact_number', models.CharField(max_length=50)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('type', models.CharField(choices=[('Hotline', 'Hotline'), ('General Contact', 'General Contact')], max_length=20)),
+                ('logo_url', models.URLField(blank=True, null=True)),
+                ('hotline_number', models.CharField(max_length=50)),
+                ('latitude', models.FloatField()),
+                ('longitude', models.FloatField()),
             ],
         ),
         migrations.CreateModel(
-            name='ContactRedirection',
+            name='AgencyEmergencyType',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('agency', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='agencies.agency')),
                 ('emergency_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='emergencies.emergencytype')),
-                ('contact', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='public_info.emergencycontact')),
             ],
+            options={
+                'unique_together': {('agency', 'emergency_type')},
+            },
         ),
     ]
