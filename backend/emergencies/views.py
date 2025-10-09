@@ -54,15 +54,8 @@ class EmergencyTypeDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EmergencyTypeSerializer
 
     @swagger_auto_schema(
-        operation_description="Retrieve, update or delete an emergency type",
+        operation_description="Get details of an emergency type",
         tags=['Emergency Types'],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'name': openapi.Schema(type=openapi.TYPE_STRING, description='Name of the emergency type'),
-                'icon_type': openapi.Schema(type=openapi.TYPE_STRING, description='Icon identifier for this emergency type')
-            }
-        ),
         responses={
             200: EmergencyTypeSerializer(),
             404: "Emergency type not found"
@@ -71,13 +64,59 @@ class EmergencyTypeDetail(generics.RetrieveUpdateDestroyAPIView):
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
+    @swagger_auto_schema(
+        operation_description="Update an emergency type",
+        tags=['Emergency Types'],
+        request_body=EmergencyTypeSerializer,
+        responses={
+            200: EmergencyTypeSerializer(),
+            404: "Emergency type not found"
+        }
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Partially update an emergency type",
+        tags=['Emergency Types'],
+        request_body=EmergencyTypeSerializer,
+        responses={
+            200: EmergencyTypeSerializer(),
+            404: "Emergency type not found"
+        }
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Delete an emergency type",
+        tags=['Emergency Types'],
+        responses={
+            204: "No Content",
+            404: "Emergency type not found"
+        }
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
 class EmergencyReportList(generics.ListCreateAPIView):
     queryset = EmergencyReport.objects.all()
     serializer_class = EmergencyReportSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_description="List all emergency reports or create a new one",
+        operation_description="List all emergency reports",
+        tags=['Emergency Reports'],
+        responses={
+            200: EmergencyReportSerializer(many=True),
+            401: "Authentication required"
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Create a new emergency report",
         tags=['Emergency Reports'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -91,7 +130,6 @@ class EmergencyReportList(generics.ListCreateAPIView):
             }
         ),
         responses={
-            200: EmergencyReportSerializer(many=True),
             201: EmergencyReportSerializer(),
             401: "Authentication required"
         }
@@ -108,7 +146,7 @@ class EmergencyReportDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_description="Retrieve, update or delete an emergency report",
+        operation_description="Get details of an emergency report",
         tags=['Emergency Reports'],
         responses={
             200: EmergencyReportSerializer(),
@@ -118,6 +156,44 @@ class EmergencyReportDetail(generics.RetrieveUpdateDestroyAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Update an emergency report",
+        tags=['Emergency Reports'],
+        request_body=EmergencyReportSerializer,
+        responses={
+            200: EmergencyReportSerializer(),
+            401: "Authentication required",
+            404: "Emergency report not found"
+        }
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Partially update an emergency report",
+        tags=['Emergency Reports'],
+        request_body=EmergencyReportSerializer,
+        responses={
+            200: EmergencyReportSerializer(),
+            401: "Authentication required",
+            404: "Emergency report not found"
+        }
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Delete an emergency report",
+        tags=['Emergency Reports'],
+        responses={
+            204: "No Content",
+            401: "Authentication required",
+            404: "Emergency report not found"
+        }
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
 
 class EmergencyVerificationList(generics.ListCreateAPIView):
     queryset = EmergencyVerification.objects.all()
@@ -307,4 +383,4 @@ class UserEvaluationDetail(generics.RetrieveUpdateDestroyAPIView):
         }
     )
     def delete(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        return super().delete(request, *args, **kwargs)
