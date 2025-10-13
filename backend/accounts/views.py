@@ -24,6 +24,7 @@ class RegisterAPIView(APIView):
     throttle_scope = 'register'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Register a new user account",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -110,6 +111,7 @@ class UserLoginAPIView(APIView):
     throttle_scope = 'login'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Login with email and password to obtain JWT tokens",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -180,6 +182,7 @@ class PasswordResetRequestAPIView(APIView):
     throttle_scope = 'password_reset_request'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Request a password reset email",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -228,6 +231,7 @@ class PasswordResetConfirmAPIView(APIView):
     throttle_scope = 'password_reset_confirm'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Confirm password reset with token",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -277,6 +281,7 @@ class EmailVerificationRequestAPIView(APIView):
     throttle_scope = 'email_verification_request'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Request email verification link",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -325,6 +330,7 @@ class EmailVerificationConfirmAPIView(APIView):
     throttle_scope = 'email_verification_confirm'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Confirm email verification with token",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -373,6 +379,7 @@ class LogoutAPIView(APIView):
     throttle_scope = 'login'
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Logout the current user",
         responses={
             200: openapi.Response(
@@ -397,6 +404,7 @@ class MeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
+        tags=['auth'],
         operation_description="Get current user information",
         responses={
             200: openapi.Response(
