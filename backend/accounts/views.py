@@ -1,22 +1,37 @@
 
-# --- Imports ---
+# Django imports
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+
+# Rest framework imports
 from rest_framework import generics, serializers, status, permissions, throttling
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
-from django.conf import settings
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.views import APIView
 from rest_framework.generics import UpdateAPIView
-from django.contrib.auth import authenticate, login, logout
-from drf_yasg.utils import swagger_auto_schema
+
+# Third party imports
 from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from knox.views import LoginView as KnoxLoginView, LogoutView as KnoxLogoutView
+from knox.auth import TokenAuthentication
+from knox.models import AuthToken
+
+# Local imports
 from .models import User, UserProfile
-from .serializers import RegisterSerializer, UserSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, EmailVerificationRequestSerializer, EmailVerificationConfirmSerializer
 from .permissions import IsLGUAdministrator
+from .serializers import (
+    RegisterSerializer, 
+    UserSerializer, 
+    PasswordResetRequestSerializer, 
+    PasswordResetConfirmSerializer,
+    EmailVerificationRequestSerializer, 
+    EmailVerificationConfirmSerializer
+)
 
 class RegisterAPIView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -95,24 +110,57 @@ class RegisterAPIView(APIView):
             status='pending',
         )
         # Optionally send verification email here
-        # Generate JWT token for the new user
-        refresh = RefreshToken.for_user(user)
+        # Generate Knox token for the new user
+        token = AuthToken.objects.create(user)[1]
         return Response({
             'ok': True,
             'email': user.email,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
+            'token': token,
         }, status=status.HTTP_201_CREATED)
 
 
-class UserLoginAPIView(APIView):
+class BaseLoginView(KnoxLoginView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'login'
 
+    def get_user_profile_data(self, user):
+        try:
+            return {
+                'full_name': user.profile.full_name,
+                'authority_level': user.profile.authority_level,
+                'contact_number': user.profile.contact_number,
+                'address': user.profile.address,
+                'status': user.profile.status,
+                'email_verified': user.profile.email_verified,
+            }
+        except AttributeError:
+            return None
+
+    def post(self, request, format=None):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        if not email or not password:
+            return Response({'error': 'email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = authenticate(request, username=email, password=password)
+        if user is None:
+            return Response({'error': 'invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+        login(request, user)
+        token = AuthToken.objects.create(user)[1]
+        return Response({
+            'ok': True,
+            'email': user.email,
+            'token': token,
+            'profile': self.get_user_profile_data(user),
+        })
+
+class UserLoginAPIView(BaseLoginView):
     @swagger_auto_schema(
         tags=['auth'],
-        operation_description="Login with email and password to obtain JWT tokens",
+        operation_description="Login with email and password for normal users",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             required=['email', 'password'],
@@ -129,8 +177,8 @@ class UserLoginAPIView(APIView):
                     properties={
                         'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN),
                         'email': openapi.Schema(type=openapi.TYPE_STRING),
-                        'refresh': openapi.Schema(type=openapi.TYPE_STRING, description='JWT refresh token'),
-                        'access': openapi.Schema(type=openapi.TYPE_STRING, description='JWT access token')
+                        'token': openapi.Schema(type=openapi.TYPE_STRING, description='Knox authentication token'),
+                        'profile': openapi.Schema(type=openapi.TYPE_OBJECT, description='User profile data')
                     }
                 )
             ),
@@ -139,40 +187,75 @@ class UserLoginAPIView(APIView):
         }
     )
 
-    def post(self, request):
+    def post(self, request, format=None):
         email = request.data.get('email')
         password = request.data.get('password')
         if not email or not password:
             return Response({'error': 'email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        
         user = authenticate(request, username=email, password=password)
         if user is None:
             return Response({'error': 'invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
-        # Check if user is approved
+
         try:
+            if user.profile.authority_level != 'User':
+                return Response({'error': 'Invalid user type for this endpoint'}, status=status.HTTP_403_FORBIDDEN)
             if user.profile.status != 'approved':
                 return Response({'error': 'Account not approved. Please wait for LGU verification.'}, status=status.HTTP_403_FORBIDDEN)
         except Exception:
             return Response({'error': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
-        login(request, user)
-        refresh = RefreshToken.for_user(user)
-        
-        # Get user profile data
-        profile_data = {
-            'full_name': user.profile.full_name,
-            'authority_level': user.profile.authority_level,
-            'contact_number': user.profile.contact_number,
-            'address': user.profile.address,
-            'status': user.profile.status,
-            'email_verified': user.profile.email_verified,
+
+        return super().post(request, format=format)
+
+class ResponderLoginAPIView(BaseLoginView):
+    @swagger_auto_schema(
+        tags=['auth'],
+        operation_description="Login with email and password for responder users",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'password'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='Responder email address'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='Responder password'),
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Login successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'ok': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING),
+                        'token': openapi.Schema(type=openapi.TYPE_STRING, description='Knox authentication token'),
+                        'profile': openapi.Schema(type=openapi.TYPE_OBJECT, description='Responder profile data')
+                    }
+                )
+            ),
+            400: "Invalid credentials",
+            403: "Account not approved or not a responder"
         }
+    )
+
+    def post(self, request, format=None):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        if not email or not password:
+            return Response({'error': 'email and password required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        return Response({
-            'ok': True,
-            'email': user.email,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'profile': profile_data,
-        })
+        user = authenticate(request, username=email, password=password)
+        if user is None:
+            return Response({'error': 'invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if user.profile.authority_level != 'Responder':
+                return Response({'error': 'Invalid user type for this endpoint'}, status=status.HTTP_403_FORBIDDEN)
+            if user.profile.status != 'approved':
+                return Response({'error': 'Account not approved. Please wait for LGU verification.'}, status=status.HTTP_403_FORBIDDEN)
+        except Exception:
+            return Response({'error': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return super().post(request, format=format)
 
 
 # --- Password Reset Request ---
@@ -373,14 +456,14 @@ class EmailVerificationConfirmAPIView(APIView):
         return Response({'ok': True})
 
 
-class LogoutAPIView(APIView):
-    # Require authenticated user for logout
+class LogoutAPIView(KnoxLogoutView):
     permission_classes = [IsAuthenticated]
     throttle_scope = 'login'
+    authentication_classes = [TokenAuthentication]
 
     @swagger_auto_schema(
         tags=['auth'],
-        operation_description="Logout the current user",
+        operation_description="Logout the current user and invalidate their token",
         responses={
             200: openapi.Response(
                 description="Logout successful",
@@ -394,14 +477,14 @@ class LogoutAPIView(APIView):
             401: "Not authenticated"
         }
     )
-    def post(self, request):
-        # Clear server-side session
-        logout(request)
+    def post(self, request, format=None):
+        knox_logout = super().post(request, format=None)
         return Response({'ok': True})
 
 
 class MeAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
     @swagger_auto_schema(
         tags=['auth'],

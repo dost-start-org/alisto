@@ -49,12 +49,12 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'rest_framework',
-    'rest_framework_simplejwt',
     'corsheaders',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'drf_yasg',
+    'knox',
 
     # Apps
     'accounts',         
@@ -63,10 +63,16 @@ INSTALLED_APPS = [
     'public_info',
     'agencies',
 ]
-# REST Framework & SimpleJWT configuration
+
+# Knox settings
+from datetime import timedelta
+KNOX_TOKEN_MODEL = 'knox.AuthToken'
+KNOX_EXPIRY = None  # Tokens never expire
+KNOX_TOKEN_TTL = None  # Token time to live is None (never expire)
+# REST Framework configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'knox.auth.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -88,15 +94,7 @@ REST_FRAMEWORK = {
     },
 }
 
-from datetime import timedelta
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-}
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Static files (CSS, JavaScript, Images)
