@@ -104,7 +104,7 @@ class RegisterAPIView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class LoginAPIView(APIView):
+class UserLoginAPIView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'login'
@@ -153,11 +153,23 @@ class LoginAPIView(APIView):
             return Response({'error': 'User profile not found.'}, status=status.HTTP_400_BAD_REQUEST)
         login(request, user)
         refresh = RefreshToken.for_user(user)
+        
+        # Get user profile data
+        profile_data = {
+            'full_name': user.profile.full_name,
+            'authority_level': user.profile.authority_level,
+            'contact_number': user.profile.contact_number,
+            'address': user.profile.address,
+            'status': user.profile.status,
+            'email_verified': user.profile.email_verified,
+        }
+        
         return Response({
             'ok': True,
             'email': user.email,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+            'profile': profile_data,
         })
 
 
