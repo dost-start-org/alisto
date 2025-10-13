@@ -16,9 +16,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework import permissions
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """
+    Health check endpoint to verify system status
+    """
+    return JsonResponse({'status': 'healthy'}, status=200)
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -34,6 +45,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Health check endpoint
+    path('health/', health_check, name='health_check'),
+    
     path('admin/', admin.site.urls),
     # API routes
     path('api/auth/', include('accounts.urls')),
