@@ -44,7 +44,7 @@ const RoleChooseScreen: React.FC<RoleChooseScreenProps> = ({ navigation }) => {
 
         <TouchableOpacity
           style={[styles.button, styles.userButton]}
-          onPress={() => navigation.navigate('UserHome')}
+          onPress={() => navigation.navigate('UserLogin')}
         >
           <Text style={styles.userText}>User login</Text>
         </TouchableOpacity>
