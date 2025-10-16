@@ -108,12 +108,18 @@ else
     exit 1
 fi
 
-# Step 6: Check if superuser should be created
+# Step 6: Create superuser
 echo ""
-read -p "Would you like to create a superuser? (y/n) " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    venv/bin/python manage.py createsuperuser
+echo "👤 Step 6: Creating superuser..."
+if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    venv/bin/python manage.py create_superuser_from_env
+else
+    echo "⚠️  Superuser credentials not found in .env"
+    read -p "Would you like to create a superuser interactively? (y/n) " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        venv/bin/python manage.py createsuperuser
+    fi
 fi
 
 # Done!

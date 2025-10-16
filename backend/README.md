@@ -223,6 +223,10 @@ gunicorn nstw_backend.wsgi:application --bind 0.0.0.0:$PORT --workers 3
    - `DJANGO_SECRET_KEY`: Your secure secret key
    - `DJANGO_DEBUG`: Set to `False` for production
    - `ALLOWED_HOSTS`: Include your Digital Ocean app URL (e.g., `yourapp.ondigitalocean.app`)
+   - `DJANGO_SUPERUSER_EMAIL`: Admin email (e.g., `admin@example.com`)
+   - `DJANGO_SUPERUSER_PASSWORD`: Secure admin password
+   - `DJANGO_SUPERUSER_FIRST_NAME`: (Optional) Admin first name (default: `Admin`)
+   - `DJANGO_SUPERUSER_LAST_NAME`: (Optional) Admin last name (default: `User`)
    - Other environment variables as specified in `.env.example`
 
 #### Database Migration
@@ -232,6 +236,37 @@ After deployment, you may need to run database migrations:
 1. Go to your App Platform console
 2. Access the Console tab
 3. Run: `python manage.py migrate`
+
+#### Creating Superuser on Staging/Production
+
+**Option 1: Using Environment Variables (Recommended)**
+
+Set these environment variables in your hosting platform:
+
+```bash
+DJANGO_SUPERUSER_EMAIL=admin@example.com
+DJANGO_SUPERUSER_PASSWORD=your-secure-password
+DJANGO_SUPERUSER_FIRST_NAME=Admin  # Optional
+DJANGO_SUPERUSER_LAST_NAME=User    # Optional
+```
+
+Then run:
+
+```bash
+python manage.py create_superuser_from_env
+```
+
+This command will create the superuser if it doesn't already exist. It's safe to run multiple times.
+
+**Option 2: Interactive Creation**
+
+Access your server console and run:
+
+```bash
+python manage.py createsuperuser
+```
+
+Follow the prompts to create the superuser interactively.
 
 ### Manual Production Deployment
 
