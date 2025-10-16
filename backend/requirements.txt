@@ -1,5 +1,8 @@
 asgiref==3.9.2
+certifi==2025.10.5
 cffi==2.0.0
+charset-normalizer==3.4.4
+click==8.3.0
 cryptography==46.0.3
 Django==5.2.6
 django-cors-headers==4.3.1
@@ -7,8 +10,13 @@ django-rest-knox==4.2.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 drf-yasg==1.21.11
+dynaconf==3.2.12
 gunicorn==23.0.0
+hvac==2.3.0
+idna==3.11
 inflection==0.5.1
+knox==0.1.14
+loguru==0.7.3
 packaging==25.0
 psycopg2-binary==2.9.10
 pycparser==2.23
@@ -16,7 +24,11 @@ PyJWT==2.10.1
 python-dotenv==1.1.1
 pytz==2025.2
 PyYAML==6.0.3
+requests==2.32.5
+shortuuid==1.0.13
 sqlparse==0.5.3
 tzdata==2025.2
 uritemplate==4.2.0
+urllib3==2.5.0
+validators==0.35.0
 whitenoise==6.8.2
