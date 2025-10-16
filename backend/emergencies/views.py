@@ -99,10 +99,50 @@ class EmergencyTypeDetail(generics.RetrieveUpdateDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
 
+from django.utils.html import escape
+from rest_framework.exceptions import ValidationError
+import bleach
+
 class EmergencyReportList(generics.ListCreateAPIView):
     queryset = EmergencyReport.objects.all()
     serializer_class = EmergencyReportSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def sanitize_input(self, data):
+        """Sanitize input data to prevent XSS and other injection attacks"""
+        if 'details' in data:
+            # Escape HTML and allow only basic formatting
+            data['details'] = bleach.clean(
+                data['details'],
+                tags=['b', 'i', 'u'],  # Allow only basic formatting
+                strip=True
+            )
+        return data
+
+    def create(self, request, *args, **kwargs):
+        # Sanitize input before validation
+        sanitized_data = self.sanitize_input(request.data.copy())
+        
+        # Validate data
+        serializer = self.get_serializer(data=sanitized_data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as e:
+            return Response({
+                'status': 'error',
+                'message': 'Validation failed',
+                'errors': e.detail
+            }, status=400)
+
+        # Save with current user
+        self.perform_create(serializer)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response({
+            'status': 'success',
+            'message': 'Emergency report created successfully',
+            'data': serializer.data
+        }, status=201, headers=headers)
 
     @swagger_auto_schema(
         operation_description="List all emergency reports",
@@ -211,7 +251,7 @@ class EmergencyVerificationList(generics.ListCreateAPIView):
         return super().get(request, *args, **kwargs)
 
     @swagger_auto_schema(
-        operation_description="Create a new emergency verification",
+        operation_description="Create a new emergency verification. Details are required and must be at least 5 characters when denying a report (vote=false).",
         tags=['Emergency Verifications'],
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -219,12 +259,13 @@ class EmergencyVerificationList(generics.ListCreateAPIView):
             properties={
                 'report': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report to verify'),
                 'vote': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if verifying the emergency, False if denying'),
-                'details': openapi.Schema(type=openapi.TYPE_STRING, description='Additional details about the verification'),
+                'details': openapi.Schema(type=openapi.TYPE_STRING, description='Additional details about the verification. Required when vote is False, must be at least 5 characters.'),
                 'image_url': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_URI, description='URL of an image supporting the verification')
             }
         ),
         responses={
             201: EmergencyVerificationSerializer(),
+            400: "Validation error - details required for denial or too short",
             401: "Authentication required"
         }
     )
