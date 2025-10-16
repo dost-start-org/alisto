@@ -1,5 +1,9 @@
 {
-  "extends": "@react-native/typescript-config",
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+"extends": "@react-native/typescript-config",
+"compilerOptions": {
+"lib": ["ES2020", "ES2020.String", "DOM"],
+"jsx": "react"
+},
+"include": ["**/*.ts", "**/*.tsx"],
+"exclude": ["/node_modules", "/Pods"]
 }
