@@ -149,6 +149,9 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'alisto_password'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5433'),
+        'OPTIONS': {
+            'sslmode': os.getenv('sslmode', 'disable'),  # Use 'disable' for local development without SSL
+        },
     }
 }
 
