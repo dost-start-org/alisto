@@ -1,6 +1,5 @@
 {
   "extends": "@react-native/typescript-config",
-  "compilerOptions": {
-    "lib": ["ES2020", "DOM", "ES2020.String", "ES2020.Symbol.WellKnown"]
-  }
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["**/node_modules", "**/Pods"]
 }

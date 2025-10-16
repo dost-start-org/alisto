@@ -1,16 +1,12 @@
 
 from django.urls import path
 from . import views
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
 
 urlpatterns = [
     path('register/', views.RegisterAPIView.as_view(), name='api_register'),
-    # JWT Auth endpoints
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('user/login/', views.UserLoginAPIView.as_view(), name='user_login'),
+    path('user/responder/login/', views.ResponderLoginAPIView.as_view(), name='responder_login'),
+    path('logout/', views.LogoutAPIView.as_view(), name='logout'),
 
     # Password reset endpoints
     path('password-reset/request/', views.PasswordResetRequestAPIView.as_view(), name='password_reset_request'),
