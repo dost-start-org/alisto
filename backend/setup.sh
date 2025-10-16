@@ -13,6 +13,18 @@ if [ ! -f "manage.py" ]; then
     exit 1
 fi
 
+# Load environment variables from .env.example if .env doesn't exist yet
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+elif [ -f ".env.example" ]; then
+    export $(grep -v '^#' .env.example | xargs)
+fi
+
+# Set defaults if not already set
+export POSTGRES_USER=${POSTGRES_USER:-alisto_user}
+export POSTGRES_DB=${POSTGRES_DB:-postgres_db}
+export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-alisto_password}
+
 # Step 1: Start PostgreSQL Container
 echo "📦 Step 1: Starting PostgreSQL container..."
 if docker compose up -d --build 2>&1 | grep -q "Running\|Started\|Created"; then
@@ -25,7 +37,7 @@ fi
 echo "⏳ Waiting for PostgreSQL to be ready..."
 MAX_RETRIES=30
 RETRY_COUNT=0
-until docker compose exec -T db pg_isready -U ${POSTGRES_USER:-postgres} > /dev/null 2>&1; do
+until docker compose exec -T db pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo "❌ PostgreSQL failed to start within 30 seconds"
