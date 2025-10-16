@@ -127,12 +127,17 @@ class BaseLoginView(KnoxLoginView):
     def get_user_profile_data(self, user):
         try:
             return {
+                'id': str(user.id),  # Include user ID
                 'full_name': user.profile.full_name,
                 'authority_level': user.profile.authority_level,
                 'contact_number': user.profile.contact_number,
                 'address': user.profile.address,
                 'status': user.profile.status,
                 'email_verified': user.profile.email_verified,
+                'latitude': str(user.profile.latitude) if user.profile.latitude else None,
+                'longitude': str(user.profile.longitude) if user.profile.longitude else None,
+                'emergency_contact_name': user.profile.emergency_contact_name,
+                'emergency_contact_number': user.profile.emergency_contact_number,
             }
         except AttributeError:
             return None
@@ -506,4 +511,28 @@ class MeAPIView(APIView):
         }
     )
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        user_data = UserSerializer(request.user).data
+        profile_data = self.get_user_profile_data(request.user) if hasattr(request.user, 'profile') else None
+        return Response({
+            'user': user_data,
+            'profile': profile_data,
+            'email': request.user.email
+        })
+        
+    def get_user_profile_data(self, user):
+        try:
+            return {
+                'id': str(user.id),
+                'full_name': user.profile.full_name,
+                'authority_level': user.profile.authority_level,
+                'contact_number': user.profile.contact_number,
+                'address': user.profile.address,
+                'status': user.profile.status,
+                'email_verified': user.profile.email_verified,
+                'latitude': str(user.profile.latitude) if user.profile.latitude else None,
+                'longitude': str(user.profile.longitude) if user.profile.longitude else None,
+                'emergency_contact_name': user.profile.emergency_contact_name,
+                'emergency_contact_number': user.profile.emergency_contact_number,
+            }
+        except AttributeError:
+            return None
