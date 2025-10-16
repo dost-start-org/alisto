@@ -15,7 +15,7 @@ fi
 
 # Step 1: Start PostgreSQL Container
 echo "📦 Step 1: Starting PostgreSQL container..."
-if docker compose up -d 2>&1 | grep -q "Running\|Started\|Created"; then
+if docker compose up -d --build 2>&1 | grep -q "Running\|Started\|Created"; then
     echo "✅ PostgreSQL container started"
 else
     echo "⚠️  PostgreSQL container may already be running"
@@ -23,7 +23,19 @@ fi
 
 # Wait for PostgreSQL to be ready
 echo "⏳ Waiting for PostgreSQL to be ready..."
-sleep 5
+MAX_RETRIES=30
+RETRY_COUNT=0
+until docker compose exec -T db pg_isready -U ${POSTGRES_USER:-postgres} > /dev/null 2>&1; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "❌ PostgreSQL failed to start within 30 seconds"
+        echo "Please check: docker compose logs db"
+        exit 1
+    fi
+    echo "  Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 1
+done
+echo "✅ PostgreSQL is ready"
 
 # Step 2: Check if virtual environment exists
 if [ ! -d "venv" ]; then
