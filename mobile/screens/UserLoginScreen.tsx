@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GridBackground from '../components/GridBackground';
 
 const MOCK_USERS = [
-  { email: 'a', password: '0' },
+  { email: 'a', password: 's' },
   { email: 'mark@gmail.com', password: '123' },
   { email: 'roice@yahoo.com', password: '456' },
   { email: 'edward@email.com', password: '789' },

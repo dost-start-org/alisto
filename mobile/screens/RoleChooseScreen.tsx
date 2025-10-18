@@ -8,9 +8,7 @@ import {
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import GridBackground from '../components/GridBackground';
 
 type RoleChooseScreenNavigationProp = StackNavigationProp<RootStackParamList, 'RoleChoose'>;
