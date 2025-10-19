@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
 
   text: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontFamily: 'Poppins-Medium',
     textAlign: 'center',
     lineHeight: 30,
   },
