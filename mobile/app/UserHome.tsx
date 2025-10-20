@@ -59,6 +59,7 @@ export default function UserHome() {
           </View>
         </View>
 
+
         <BottomNav
           onNavigate={(screen) => {
             router.push(`/${screen}`);
