@@ -20,7 +20,10 @@ export default function BottomNav({ onNavigate }: Props) {
         style={styles.bottomButton}
         onPress={() => onNavigate?.('Hotlines')}
       >
-        <Image source={require('../assets/hotlinesicon.png')} style={styles.icon} />
+        <Image
+          source={require('../assets/hotlinesicon.png')}
+          style={styles.icon}
+        />
         <Text style={styles.bottomText}>Hotlines</Text>
       </TouchableOpacity>
 
@@ -34,11 +37,16 @@ export default function BottomNav({ onNavigate }: Props) {
 
 const styles = StyleSheet.create({
   bottomNav: {
-    height: 70,
+    height: 84,
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   bottomButton: {
     flex: 1,
