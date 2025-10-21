@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 
+export type NavScreen = 'UserHome' | 'Hotlines';
+
 type Props = {
-  onNavigate?: (screen: string) => void;
+  onNavigate?: (screen: NavScreen) => void;
 };
 
 export default function BottomNav({ onNavigate }: Props) {
@@ -12,7 +14,10 @@ export default function BottomNav({ onNavigate }: Props) {
         style={styles.bottomButton}
         onPress={() => onNavigate?.('UserHome')}
       >
-        <Image source={require('../assets/homeicon.png')} style={styles.icon} />
+        <Image
+          source={require('../assets/homeicon.png')}
+          style={styles.icon}
+        />
         <Text style={styles.bottomText}>Home</Text>
       </TouchableOpacity>
 
