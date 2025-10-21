@@ -1,16 +1,14 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-
-type NavProp = StackNavigationProp<RootStackParamList, 'Notifications'>;
+import { View, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TopNav() {
-  const navigation = useNavigation<NavProp>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.inner}>
         <View style={styles.logoContainer}>
           <Image
@@ -20,7 +18,7 @@ export default function TopNav() {
         </View>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('Notifications')}
+          onPress={() => router.push('/Notifications')}
           style={styles.menuButton}
           activeOpacity={0.6}
         >
@@ -37,7 +35,6 @@ export default function TopNav() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#f2f2f2',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.1,

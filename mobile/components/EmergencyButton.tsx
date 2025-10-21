@@ -1,16 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
-
-type EmergencyButtonNavProp = StackNavigationProp<
-  RootStackParamList,
-  'UserHome'
->;
+import { useRouter } from 'expo-router';
 
 export default function EmergencyButton() {
-  const navigation = useNavigation<EmergencyButtonNavProp>();
+  const router = useRouter();
 
   return (
     <View style={styles.wrapper}>
@@ -19,7 +12,7 @@ export default function EmergencyButton() {
 
       <TouchableOpacity
         style={styles.circleMain}
-        onPress={() => navigation.navigate('EmergencyOptions')}
+        onPress={() => router.push('/EmergencyOptions')}
       >
         <Text style={styles.text}>Press to{"\n"}Report Emergency</Text>
       </TouchableOpacity>
