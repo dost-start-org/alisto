@@ -9,7 +9,7 @@ from django.utils.html import escape
 from rest_framework.exceptions import ValidationError
 import bleach
 import math
-from accounts.models import User
+from accounts.models import User, UserProfile
 from .models import EmergencyType, EmergencyReport, EmergencyVerification, UserEvaluation
 from .serializers import (
     EmergencyTypeSerializer,
@@ -313,15 +313,35 @@ class EmergencyVerificationDetail(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         operation_description="Partially update an emergency verification",
         tags=['Emergency Verifications'],
-        request_body=EmergencyVerificationSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'vote': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if verifying the emergency, False if denying')
+            }
+        ),
         responses={
             200: EmergencyVerificationSerializer(),
-            401: "Authentication required",
+            400: "Validation error",
             404: "Emergency verification not found"
         }
     )
     def patch(self, request, *args, **kwargs):
-        return super().patch(request, *args, **kwargs)
+        verification = self.get_object()
+        vote = request.data.get('vote')
+
+        # Validate the vote value
+        if vote not in [True, False, None]:
+            return Response(
+                {'vote': ['“{}” value must be either True, False, or None.'.format(vote)]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if vote is not None:
+            verification.vote = vote
+            verification.save()
+
+        serializer = self.get_serializer(verification)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_description="Delete an emergency verification",
@@ -441,12 +461,28 @@ class TriggerCrowdsourcingBroadcast(APIView):
         """
         Calculate the great-circle distance between two points on the Earth using the Haversine formula.
         """
+        # Convert all inputs to float to handle type mismatches
+        lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
+
+        # Check if the points are the same (distance is 0)
+        if lat1 == lat2 and lon1 == lon2:
+            print(f"Points are the same: ({lat1}, {lon1})")
+            return 0.0
+
         R = 6371  # Radius of the Earth in kilometers
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
+        distance = R * c
+
+        # Treat very small distances as zero
+        if distance < 0.1:  # Adjusted threshold for very small distances
+            print(f"Distance ({distance} km) is considered zero.")
+            return 0.0
+
+        print(f"Calculated distance: {distance} km between ({lat1}, {lon1}) and ({lat2}, {lon2})")
+        return distance
 
     @swagger_auto_schema(
         operation_description="Trigger a crowdsourcing broadcast for an emergency report within a specific range.",
@@ -473,21 +509,29 @@ class TriggerCrowdsourcingBroadcast(APIView):
         report = get_object_or_404(EmergencyReport, id=report_id)
         report_lat, report_lon = report.latitude, report.longitude
 
-        # Filter all users (responders and others) within the specified range
-        users = User.objects.all()
-        users_within_range = [
-            user for user in users
-            if self.haversine_distance(report_lat, report_lon, user.latitude, user.longitude) <= broadcast_range
-        ]
+        # Filter all user profiles within the specified range
+        user_profiles = UserProfile.objects.filter(status='approved')
+        users_within_range = []
+        # Exclude users when the range is explicitly set to 0 km
+        if broadcast_range == 0:
+            users_within_range = []
+        else:
+            for profile in user_profiles:
+                distance = self.haversine_distance(report_lat, report_lon, profile.latitude, profile.longitude)
+                print(f"User {profile.user.id}: Distance = {distance} km")
+                if distance <= broadcast_range:
+                    users_within_range.append(profile.user)
 
         # Filter relevant agencies by emergency type and proximity
         relevant_agencies = Agency.objects.filter(
             agencyemergencytype__emergency_type=report.emergency_type
         )
-        agencies_within_range = [
-            agency for agency in relevant_agencies
-            if self.haversine_distance(report_lat, report_lon, agency.latitude, agency.longitude) <= broadcast_range
-        ]
+        agencies_within_range = []
+        for agency in relevant_agencies:
+            distance = self.haversine_distance(report_lat, report_lon, agency.latitude, agency.longitude)
+            print(f"Agency {agency.name}: Distance = {distance} km")
+            if distance <= broadcast_range:
+                agencies_within_range.append(agency)
 
         # Notify agencies (e.g., via their hotline numbers)
         agency_notifications = [
@@ -500,6 +544,9 @@ class TriggerCrowdsourcingBroadcast(APIView):
 
         # Logic to trigger broadcast (e.g., WebSocket notification)
         user_ids = [user.id for user in users_within_range]
+
+        print(f"Users within range: {user_ids}")
+        print(f"Notified agencies: {agency_notifications}")
 
         return Response({
             "message": "Broadcast triggered successfully.",
