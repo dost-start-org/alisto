@@ -141,19 +141,27 @@ WSGI_APPLICATION = 'nstw_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'postgres_db'),
-        'USER': os.getenv('POSTGRES_USER', 'alisto_user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'alisto_password'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5433'),
-        'OPTIONS': {
-            'sslmode': os.getenv('sslmode', 'disable'),  # Use 'disable' for local development without SSL
-        },
+if DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'postgres_db'),
+            'USER': os.getenv('POSTGRES_USER', 'alisto_user'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'alisto_password'),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5433'),
+            'OPTIONS': {
+                'sslmode': os.getenv('sslmode', 'disable'),  # Use 'disable' for local development without SSL
+            },
+        }
+    }
 
 
 # Password validation
