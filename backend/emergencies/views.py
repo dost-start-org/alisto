@@ -19,6 +19,7 @@ from .serializers import (
     EmergencyVerificationSerializer,
     UserEvaluationSerializer
 )
+from agencies.models import Agency, AgencyEmergencyType
 
 class EmergencyTypeList(generics.ListCreateAPIView):
     """
@@ -481,12 +482,31 @@ class TriggerCrowdsourcingBroadcast(APIView):
             if self.haversine_distance(report_lat, report_lon, user.latitude, user.longitude) <= broadcast_range
         ]
 
+        # Filter relevant agencies by emergency type and proximity
+        relevant_agencies = Agency.objects.filter(
+            agencyemergencytype__emergency_type=report.emergency_type
+        )
+        agencies_within_range = [
+            agency for agency in relevant_agencies
+            if self.haversine_distance(report_lat, report_lon, agency.latitude, agency.longitude) <= broadcast_range
+        ]
+
+        # Notify agencies (e.g., via their hotline numbers)
+        agency_notifications = [
+            {
+                "agency_name": agency.name,
+                "hotline_number": agency.hotline_number
+            }
+            for agency in agencies_within_range
+        ]
+
         # Logic to trigger broadcast (e.g., WebSocket notification)
         user_ids = [user.id for user in users_within_range]
 
         return Response({
             "message": "Broadcast triggered successfully.",
-            "users": user_ids
+            "users": user_ids,
+            "notified_agencies": agency_notifications
         }, status=status.HTTP_200_OK)
 
 class MarkReportAsVerified(APIView):
