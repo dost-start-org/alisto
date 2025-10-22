@@ -7,8 +7,6 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.utils.html import escape
 from rest_framework.exceptions import ValidationError
-from django.contrib.gis.geos import Point
-from django.contrib.gis.db.models.functions import Distance
 import bleach
 import math
 from accounts.models import User
