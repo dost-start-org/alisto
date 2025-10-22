@@ -2,6 +2,14 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from rest_framework.views import APIView
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from django.utils.html import escape
+from rest_framework.exceptions import ValidationError
+import bleach
+import math
+from accounts.models import User, UserProfile
 from .models import EmergencyType, EmergencyReport, EmergencyVerification, UserEvaluation
 from .serializers import (
     EmergencyTypeSerializer,
@@ -9,6 +17,7 @@ from .serializers import (
     EmergencyVerificationSerializer,
     UserEvaluationSerializer
 )
+from agencies.models import Agency, AgencyEmergencyType
 
 class EmergencyTypeList(generics.ListCreateAPIView):
     """
@@ -98,10 +107,6 @@ class EmergencyTypeDetail(generics.RetrieveUpdateDestroyAPIView):
     )
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
-
-from django.utils.html import escape
-from rest_framework.exceptions import ValidationError
-import bleach
 
 class EmergencyReportList(generics.ListCreateAPIView):
     queryset = EmergencyReport.objects.all()
@@ -308,15 +313,35 @@ class EmergencyVerificationDetail(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(
         operation_description="Partially update an emergency verification",
         tags=['Emergency Verifications'],
-        request_body=EmergencyVerificationSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'vote': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if verifying the emergency, False if denying')
+            }
+        ),
         responses={
             200: EmergencyVerificationSerializer(),
-            401: "Authentication required",
+            400: "Validation error",
             404: "Emergency verification not found"
         }
     )
     def patch(self, request, *args, **kwargs):
-        return super().patch(request, *args, **kwargs)
+        verification = self.get_object()
+        vote = request.data.get('vote')
+
+        # Validate the vote value
+        if vote not in [True, False, None]:
+            return Response(
+                {'vote': ['“{}” value must be either True, False, or None.'.format(vote)]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if vote is not None:
+            verification.vote = vote
+            verification.save()
+
+        serializer = self.get_serializer(verification)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_description="Delete an emergency verification",
@@ -425,3 +450,135 @@ class UserEvaluationDetail(generics.RetrieveUpdateDestroyAPIView):
     )
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
+
+class TriggerCrowdsourcingBroadcast(APIView):
+    """
+    Endpoint for responders to trigger a crowdsourcing broadcast within a specific range.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def haversine_distance(self, lat1, lon1, lat2, lon2):
+        """
+        Calculate the great-circle distance between two points on the Earth using the Haversine formula.
+        """
+        # Convert all inputs to float to handle type mismatches
+        lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
+
+        # Check if the points are the same (distance is 0)
+        if lat1 == lat2 and lon1 == lon2:
+            print(f"Points are the same: ({lat1}, {lon1})")
+            return 0.0
+
+        R = 6371  # Radius of the Earth in kilometers
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = R * c
+
+        # Treat very small distances as zero
+        if distance < 0.1:  # Adjusted threshold for very small distances
+            print(f"Distance ({distance} km) is considered zero.")
+            return 0.0
+
+        print(f"Calculated distance: {distance} km between ({lat1}, {lon1}) and ({lat2}, {lon2})")
+        return distance
+
+    @swagger_auto_schema(
+        operation_description="Trigger a crowdsourcing broadcast for an emergency report within a specific range.",
+        tags=['Crowdsourcing'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['report_id', 'range'],
+            properties={
+                'report_id': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report'),
+                'range': openapi.Schema(type=openapi.TYPE_NUMBER, description='Range in kilometers for the broadcast')
+            }
+        ),
+        responses={
+            200: "Broadcast triggered successfully",
+            404: "Emergency report not found",
+            401: "Authentication required"
+        }
+    )
+    def post(self, request):
+        report_id = request.data.get('report_id')
+        broadcast_range = request.data.get('range', 5)  # Default range is 5 km
+
+        # Validate the emergency report
+        report = get_object_or_404(EmergencyReport, id=report_id)
+        report_lat, report_lon = report.latitude, report.longitude
+
+        # Filter all user profiles within the specified range
+        user_profiles = UserProfile.objects.filter(status='approved')
+        users_within_range = []
+        # Exclude users when the range is explicitly set to 0 km
+        if broadcast_range == 0:
+            users_within_range = []
+        else:
+            for profile in user_profiles:
+                distance = self.haversine_distance(report_lat, report_lon, profile.latitude, profile.longitude)
+                print(f"User {profile.user.id}: Distance = {distance} km")
+                if distance <= broadcast_range:
+                    users_within_range.append(profile.user)
+
+        # Filter relevant agencies by emergency type and proximity
+        relevant_agencies = Agency.objects.filter(
+            agencyemergencytype__emergency_type=report.emergency_type
+        )
+        agencies_within_range = []
+        for agency in relevant_agencies:
+            distance = self.haversine_distance(report_lat, report_lon, agency.latitude, agency.longitude)
+            print(f"Agency {agency.name}: Distance = {distance} km")
+            if distance <= broadcast_range:
+                agencies_within_range.append(agency)
+
+        # Notify agencies (e.g., via their hotline numbers)
+        agency_notifications = [
+            {
+                "agency_name": agency.name,
+                "hotline_number": agency.hotline_number
+            }
+            for agency in agencies_within_range
+        ]
+
+        # Logic to trigger broadcast (e.g., WebSocket notification)
+        user_ids = [user.id for user in users_within_range]
+
+        print(f"Users within range: {user_ids}")
+        print(f"Notified agencies: {agency_notifications}")
+
+        return Response({
+            "message": "Broadcast triggered successfully.",
+            "users": user_ids,
+            "notified_agencies": agency_notifications
+        }, status=status.HTTP_200_OK)
+
+class MarkReportAsVerified(APIView):
+    """
+    Endpoint for responders to manually mark a report as verified.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Manually mark an emergency report as verified.",
+        tags=['Crowdsourcing'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['report_id'],
+            properties={
+                'report_id': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report')
+            }
+        ),
+        responses={
+            200: "Report marked as verified",
+            404: "Emergency report not found",
+            401: "Authentication required"
+        }
+    )
+    def post(self, request):
+        report_id = request.data.get('report_id')
+        report = get_object_or_404(EmergencyReport, id=report_id)
+        report.verification_status = 'Verified'
+        report.save()
+        return Response({"message": "Report marked as verified."}, status=status.HTTP_200_OK)
