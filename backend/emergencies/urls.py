@@ -3,7 +3,8 @@ from .views import (
     EmergencyTypeList, EmergencyTypeDetail,
     EmergencyReportList, EmergencyReportDetail,
     EmergencyVerificationList, EmergencyVerificationDetail,
-    UserEvaluationList, UserEvaluationDetail
+    UserEvaluationList, UserEvaluationDetail,
+    TriggerCrowdsourcingBroadcast, MarkReportAsVerified
 )
 
 urlpatterns = [
@@ -15,4 +16,6 @@ urlpatterns = [
     path('verifications/<uuid:pk>/', EmergencyVerificationDetail.as_view(), name='emergency-verification-detail'),
     path('evaluations/', UserEvaluationList.as_view(), name='user-evaluation-list'),
     path('evaluations/<uuid:pk>/', UserEvaluationDetail.as_view(), name='user-evaluation-detail'),
+    path('crowdsourcing/broadcast/', TriggerCrowdsourcingBroadcast.as_view(), name='trigger-crowdsourcing-broadcast'),
+    path('crowdsourcing/mark-verified/', MarkReportAsVerified.as_view(), name='mark-report-as-verified'),
 ]
