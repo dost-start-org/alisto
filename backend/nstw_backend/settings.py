@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'drf_yasg',
     'knox',
+    'django_seed',
 
     # Apps
     'accounts',         
