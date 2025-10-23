@@ -108,7 +108,22 @@ else
     exit 1
 fi
 
-# Step 6: Create superuser
+# Step 6: Seed initial data
+echo "🌱 Step 6: Seeding initial data..."
+if [ -f "venv/bin/python" ]; then
+    venv/bin/python manage.py seed_data
+    if [ $? -eq 0 ]; then
+        echo "✅ Data seeding completed"
+    else
+        echo "❌ Failed to seed data"
+        exit 1
+    fi
+else
+    echo "❌ Error: Python not found in virtual environment"
+    exit 1
+fi
+
+# Step 7: Create superuser
 echo ""
 echo "👤 Step 6: Creating superuser..."
 if [ -n "$DJANGO_SUPERUSER_EMAIL" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
