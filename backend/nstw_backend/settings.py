@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'emergencies',
     'public_info',
     'agencies',
+    'core',
 ]
 
 # Knox settings
