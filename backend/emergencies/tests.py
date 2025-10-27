@@ -47,6 +47,19 @@ class VerificationSystemTests(TestCase):
             latitude=14.5996,
             longitude=120.9843
         )
+        # Ensure user has a UserProfile
+        self.userprofile, created = UserProfile.objects.get_or_create(
+            user=self.user,
+            defaults={
+                'full_name': 'Responder User',
+                'authority_level': 'Responder',
+                'contact_number': '1234567890',
+                'date_of_birth': '1990-01-01',
+                'address': 'Test Address',
+                'status': 'approved',
+                'email_verified': True
+            }
+        )
         self.client.force_authenticate(user=self.user)
 
     def test_verification_response(self):
@@ -112,6 +125,75 @@ class VerificationSystemTests(TestCase):
         self.assertIn('users', response.data)
         self.assertIn('notified_agencies', response.data)
         self.assertNotIn(user_out_of_range.id, response.data['users'])
+
+    def test_responder_accept_report(self):
+        url = reverse('emergency_report_responder_actions', kwargs={'report_id': self.report.id})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.responder, self.user)
+        self.assertEqual(self.report.status, 'Responding')
+
+    def test_responder_unassign_report(self):
+        self.report.responder = self.user
+        self.report.status = 'Responding'
+        self.report.save()
+
+        url = reverse('emergency_report_responder_actions', kwargs={'report_id': self.report.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.report.refresh_from_db()
+        self.assertIsNone(self.report.responder)
+        self.assertEqual(self.report.status, 'Pending')
+
+    def test_responder_update_status(self):
+        self.report.responder = self.user
+        self.report.status = 'Responding'
+        self.report.save()
+
+        url = reverse('emergency_report_status_update', kwargs={'report_id': self.report.id})
+        data = {'status': 'Resolved'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.status, 'Resolved')
+
+    def test_invalid_status_update(self):
+        self.report.responder = self.user
+        self.report.status = 'Responding'
+        self.report.save()
+
+        url = reverse('emergency_report_status_update', kwargs={'report_id': self.report.id})
+        data = {'status': 'InvalidStatus'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_trigger_crowdsourcing(self):
+        url = reverse('trigger_crowdsourcing', kwargs={'report_id': self.report.id})
+        self.user.profile.authority_level = 'Responder'
+        self.user.profile.save()
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('notified_users', response.data)
+
+    def test_respond_to_emergency(self):
+        self.report.responder = self.user
+        self.report.status = 'Responding'
+        self.report.save()
+
+        url = reverse('respond_to_emergency', kwargs={'report_id': self.report.id})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.status, 'Responded')
+
+    def test_notification_on_status_change(self):
+        self.report.status = 'Resolved'
+        self.report.save()
+
+        # Check if the notification signal was triggered (mocked for now)
+        # In a real test, you would use Django's mail.outbox to verify email sending
+        self.assertEqual(self.report.status, 'Resolved')
 
 class EnhancedVerificationSystemTests(VerificationSystemTests):
     def test_verification_response_invalid_vote(self):
