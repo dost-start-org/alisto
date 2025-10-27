@@ -22,6 +22,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from emergencies.views import EmergencyReportResponderActions, EmergencyReportStatusUpdate, TriggerCrowdsourcing, RespondToEmergency
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -60,4 +61,8 @@ urlpatterns = [
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('api/emergencies/<uuid:report_id>/responder-actions/', EmergencyReportResponderActions.as_view(), name='emergency_report_responder_actions'),
+    path('api/emergencies/<uuid:report_id>/status-update/', EmergencyReportStatusUpdate.as_view(), name='emergency_report_status_update'),
+    path('api/emergencies/<uuid:report_id>/trigger-crowdsourcing/', TriggerCrowdsourcing.as_view(), name='trigger_crowdsourcing'),
+    path('api/emergencies/<uuid:report_id>/respond/', RespondToEmergency.as_view(), name='respond_to_emergency'),
 ]

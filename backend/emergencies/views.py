@@ -18,6 +18,7 @@ from .serializers import (
     UserEvaluationSerializer
 )
 from agencies.models import Agency, AgencyEmergencyType
+from django.core.mail import send_mail
 
 class EmergencyTypeList(generics.ListCreateAPIView):
     """
@@ -465,7 +466,7 @@ class TriggerCrowdsourcingBroadcast(APIView):
         lat1, lon1, lat2, lon2 = map(float, [lat1, lon1, lat2, lon2])
 
         # Check if the points are the same (distance is 0)
-        if lat1 == lat2 and lon1 == lon2:
+        if lat1 == lat2 and lon1 == lon1:
             print(f"Points are the same: ({lat1}, {lon1})")
             return 0.0
 
@@ -582,3 +583,146 @@ class MarkReportAsVerified(APIView):
         report.verification_status = 'Verified'
         report.save()
         return Response({"message": "Report marked as verified."}, status=status.HTTP_200_OK)
+
+class EmergencyReportResponderActions(APIView):
+    """
+    API view for responders to accept or reject emergency reports.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, report_id):
+        report = get_object_or_404(EmergencyReport, id=report_id)
+
+        if report.responder is not None:
+            return Response({
+                'status': 'error',
+                'message': 'This report has already been assigned to another responder.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        report.responder = request.user
+        report.status = 'Responding'
+        report.save()
+
+        return Response({
+            'status': 'success',
+            'message': 'You have been assigned to this emergency report.',
+            'report_id': report.id
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, report_id):
+        report = get_object_or_404(EmergencyReport, id=report_id, responder=request.user)
+
+        report.responder = None
+        report.status = 'Pending'
+        report.save()
+
+        return Response({
+            'status': 'success',
+            'message': 'You have unassigned yourself from this emergency report.',
+            'report_id': report.id
+        }, status=status.HTTP_200_OK)
+
+class EmergencyReportStatusUpdate(APIView):
+    """
+    API view for responders to update the status of an emergency report.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, report_id):
+        report = get_object_or_404(EmergencyReport, id=report_id, responder=request.user)
+
+        new_status = request.data.get('status')
+        if new_status not in dict(EmergencyReport.STATUS_CHOICES):
+            return Response({
+                'status': 'error',
+                'message': 'Invalid status value.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        report.status = new_status
+        report.save()
+
+        return Response({
+            'status': 'success',
+            'message': f'Report status updated to {new_status}.',
+            'report_id': report.id
+        }, status=status.HTTP_200_OK)
+
+class TriggerCrowdsourcing(APIView):
+    """
+    API view for responders to trigger a crowdsourcing verification request.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, report_id):
+        report = get_object_or_404(EmergencyReport, id=report_id)
+
+        # Ensure only responders can trigger crowdsourcing
+        if request.user.profile.authority_level != 'Responder':
+            return Response({
+                'status': 'error',
+                'message': 'Only responders can trigger crowdsourcing.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Identify nearby users (example logic, replace with actual distance calculation)
+        nearby_users = UserProfile.objects.filter(
+            status='approved',
+            latitude__range=(report.latitude - 0.1, report.latitude + 0.1),
+            longitude__range=(report.longitude - 0.1, report.longitude + 0.1)
+        ).exclude(user=request.user)
+
+        # Send verification prompts (mocked for now)
+        for user in nearby_users:
+            print(f"Sending verification request to {user.user.email}")
+
+        return Response({
+            'status': 'success',
+            'message': 'Crowdsourcing verification triggered.',
+            'notified_users': [user.user.email for user in nearby_users]
+        }, status=status.HTTP_200_OK)
+
+class RespondToEmergency(APIView):
+    """
+    API view for responders to mark a report as "Responded" and notify relevant users.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Mark an emergency report as responded and notify the reporter.",
+        tags=['Emergency Reports'],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['report_id'],
+            properties={
+                'report_id': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report')
+            }
+        ),
+        responses={
+            200: "Report marked as responded",
+            404: "Emergency report not found",
+            401: "Authentication required"
+        }
+    )
+    def post(self, request, report_id):
+        report = get_object_or_404(EmergencyReport, id=report_id, responder=request.user)
+
+        if report.status != 'Responding':
+            return Response({
+                'status': 'error',
+                'message': 'Only reports in "Responding" status can be marked as "Responded."'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        report.status = 'Responded'
+        report.save()
+
+        # Notify the reporter
+        send_mail(
+            subject='Responder En Route',
+            message=f'A responder is en route to your reported emergency (ID: {report.id}).',
+            from_email='noreply@alisto.com',
+            recipient_list=[report.user.email]
+        )
+
+        return Response({
+            'status': 'success',
+            'message': 'The report has been marked as "Responded," and the reporter has been notified.'
+        }, status=status.HTTP_200_OK)
