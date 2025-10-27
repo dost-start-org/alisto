@@ -2,6 +2,9 @@ from django.db import models
 import uuid
 from django.conf import settings
 from django.db.models import Count, Q
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.mail import send_mail
 
 class EmergencyType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -44,6 +47,14 @@ class EmergencyReport(models.Model):
     )
     image_url = models.URLField(null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
+    responder = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_reports',
+        help_text="The responder assigned to this emergency report."
+    )
 
     def __str__(self):
         return f"Emergency Report {self.id}"
@@ -113,3 +124,22 @@ class UserEvaluation(models.Model):
 
     def __str__(self):
         return f"Evaluation for {self.report.id}"
+
+@receiver(post_save, sender=EmergencyReport)
+def notify_report_status_change(sender, instance, **kwargs):
+    if kwargs.get('created', False):
+        # Notify reporter about the new report creation
+        send_mail(
+            subject='Emergency Report Submitted',
+            message=f'Your report {instance.id} has been submitted successfully.',
+            from_email='noreply@alisto.com',
+            recipient_list=[instance.user.email]
+        )
+    else:
+        # Notify reporter about status changes
+        send_mail(
+            subject='Emergency Report Status Update',
+            message=f'The status of your report {instance.id} has been updated to {instance.status}.',
+            from_email='noreply@alisto.com',
+            recipient_list=[instance.user.email]
+        )
