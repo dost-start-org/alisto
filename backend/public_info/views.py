@@ -1,9 +1,9 @@
 from rest_framework import generics, permissions
 from drf_yasg.utils import swagger_auto_schema
-from .models import EmergencyContact, ContactRedirection
+from .models import EmergencyContact, ContactRedirection, UserEmergencyContact
 from .serializers import (
     EmergencyContactSerializer, EmergencyContactDetailSerializer,
-    ContactRedirectionSerializer
+    ContactRedirectionSerializer, UserEmergencyContactSerializer
 )
 
 class EmergencyContactList(generics.ListCreateAPIView):
@@ -179,3 +179,22 @@ class ContactRedirectionDetail(generics.RetrieveUpdateDestroyAPIView):
     )
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
+
+class UserEmergencyContactListCreateView(generics.ListCreateAPIView):
+    serializer_class = UserEmergencyContactSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return contacts belonging to the logged-in user
+        return UserEmergencyContact.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class UserEmergencyContactDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = UserEmergencyContactSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only allow access to user's own contacts
+        return UserEmergencyContact.objects.filter(user=self.request.user)
