@@ -181,6 +181,13 @@ class ContactRedirectionDetail(generics.RetrieveUpdateDestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
 class UserEmergencyContactListCreateView(generics.ListCreateAPIView):
+    """
+    list:
+    Get a list of the user's personal emergency contacts.
+
+    create:
+    Add a new personal emergency contact for the logged-in user.
+    """
     serializer_class = UserEmergencyContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -191,10 +198,81 @@ class UserEmergencyContactListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @swagger_auto_schema(
+        operation_summary="List user's emergency contacts",
+        operation_description="Retrieve a list of the logged-in user's personal emergency contacts.",
+        tags=['User Emergency Contacts'],
+        responses={200: UserEmergencyContactSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Create user emergency contact",
+        operation_description="Add a new emergency contact for the logged-in user.",
+        tags=['User Emergency Contacts'],
+        request_body=UserEmergencyContactSerializer,
+        responses={201: UserEmergencyContactSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
 class UserEmergencyContactDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    retrieve:
+    Get detailed information about a user's specific emergency contact.
+
+    update:
+    Update a user's emergency contact details.
+
+    partial_update:
+    Partially update a user's emergency contact.
+
+    destroy:
+    Delete a user's emergency contact.
+    """
     serializer_class = UserEmergencyContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only allow access to user's own contacts
+        # Only allow access to the user's own contacts
         return UserEmergencyContact.objects.filter(user=self.request.user)
+
+    @swagger_auto_schema(
+        operation_summary="Get user emergency contact details",
+        operation_description="Retrieve details about a specific emergency contact belonging to the logged-in user.",
+        tags=['User Emergency Contacts'],
+        responses={200: UserEmergencyContactSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Update user emergency contact",
+        operation_description="Update the details of a specific emergency contact belonging to the logged-in user.",
+        tags=['User Emergency Contacts'],
+        request_body=UserEmergencyContactSerializer,
+        responses={200: UserEmergencyContactSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Partially update user emergency contact",
+        operation_description="Partially update a specific emergency contact belonging to the logged-in user.",
+        tags=['User Emergency Contacts'],
+        request_body=UserEmergencyContactSerializer,
+        responses={200: UserEmergencyContactSerializer}
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_summary="Delete user emergency contact",
+        operation_description="Remove a specific emergency contact belonging to the logged-in user.",
+        tags=['User Emergency Contacts'],
+        responses={204: "No Content"}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
