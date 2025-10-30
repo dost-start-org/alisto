@@ -30,7 +30,9 @@ def health_check(request):
     """
     Health check endpoint to verify system status
     """
-    return JsonResponse({'status': 'healthy'}, status=200)
+    host = request.META.get('HTTP_HOST', '')
+    print(f"Health check Host header: {host}")
+    return JsonResponse({'status': 'healthy', 'host': host}, status=200)
 
 schema_view = get_schema_view(
    openapi.Info(
