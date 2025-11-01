@@ -24,13 +24,13 @@ class UserEmergencyContactTests(APITestCase):
         self.contact1 = UserEmergencyContact.objects.create(
             user=self.user1,
             name="Mom",
-            phone_number="09171234567",
+            contact_number="09171234567",
             relationship="Mother"
         )
         self.contact2 = UserEmergencyContact.objects.create(
             user=self.user1,
             name="Dad",
-            phone_number="09991234567",
+            contact_number="09991234567",
             relationship="Father"
         )
 
@@ -57,7 +57,7 @@ class UserEmergencyContactTests(APITestCase):
         self.client.force_authenticate(user=self.user1)
         data = {
             "name": "Brother",
-            "phone_number": "09170000000",
+            "contact_number": "09170000000",
             "relationship": "Sibling"
         }
         response = self.client.post(self.list_url, data, format="json")
