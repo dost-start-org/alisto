@@ -161,6 +161,17 @@ Once the server is running:
 - **Swagger UI**: http://localhost:8000/swagger/
 - **ReDoc**: http://localhost:8000/redoc/
 
+### Using Swagger with Authentication
+
+Swagger is configured to work with Knox token authentication. To test authenticated endpoints:
+
+1. Use a login endpoint (`/api/auth/user/login/`, `/api/auth/responder/login/`, or `/api/auth/lgu-admin/login/`) to get a token
+2. Click the **"Authorize"** button (🔒) at the top right of Swagger UI
+3. Enter: `Token <your_token_here>` (include the word "Token" followed by a space)
+4. Click "Authorize"
+
+See [SWAGGER_AUTH_GUIDE.md](SWAGGER_AUTH_GUIDE.md) for detailed instructions.
+
 ## Troubleshooting
 
 ### Cannot connect to database
