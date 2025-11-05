@@ -14,9 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/submiticon.png",
-        "backgroundImage": "./assets/submiticon.png",
-        "monochromeImage": "./assets/submiticon.png"
+        "foregroundImage": "./assets/submiticon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -37,6 +35,13 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Alisto to access your location even when the app is in the background to better assist in emergencies.",
+          "locationWhenInUsePermission": "Allow Alisto to access your location while you are using the app to report emergencies."
         }
       ]
     ],
