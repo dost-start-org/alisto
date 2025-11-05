@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import GridBackground from '../components/GridBackground';
 import axios, { isAxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://orca-app-5wnax.ondigitalocean.app';
 
@@ -45,10 +46,13 @@ const UserLoginScreen = () => {
         password: password,
       });
 
-      await SecureStore.setItemAsync('authToken', response.data.token);
+      const { token, profile } = response.data;
+
+      await SecureStore.setItemAsync('authToken', token);
+      await AsyncStorage.setItem('userProfile', JSON.stringify(profile));
+
       setIsError(false);
       router.push('/UserHome');
-
     } catch (error) {
       if (isAxiosError(error)) {
         let errorMessage = 'An unexpected error occurred.';
