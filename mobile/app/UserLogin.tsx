@@ -9,18 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import GridBackground from '../components/GridBackground';
+import axios, { isAxiosError } from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const MOCK_USERS = [
-  { email: 'a', password: 's' },
-  { email: 'mark@gmail.com', password: '123' },
-  { email: 'roice@yahoo.com', password: '456' },
-  { email: 'edward@email.com', password: '789' },
-  { email: 'juandelacruz@gmail.com', password: 'password' },
-];
+const BASE_URL = 'https://orca-app-5wnax.ondigitalocean.app';
 
 const UserLoginScreen = () => {
   const insets = useSafeAreaInsets();
@@ -29,25 +27,56 @@ const UserLoginScreen = () => {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       setMessage('Login Error: Please enter both email and password.');
       setIsError(true);
       return;
     }
 
-    const userMatch = MOCK_USERS.find(
-      user => user.email === email && user.password === password
-    );
+    setIsLoading(true);
+    setMessage('');
+    setIsError(false);
 
-    if (userMatch) {
-      setMessage(`Mock Login Success: Logged in as ${email}.`);
+    try {
+      const response = await axios.post(`${BASE_URL}/api/auth/user/login/`, {
+        email: email,
+        password: password,
+      });
+
+      const { token, profile } = response.data;
+
+      await SecureStore.setItemAsync('authToken', token);
+      await AsyncStorage.setItem('userProfile', JSON.stringify(profile));
+
       setIsError(false);
       router.push('/UserHome');
-    } else {
-      setMessage('Login Error: Invalid email or password.');
+    } catch (error) {
+      if (isAxiosError(error)) {
+        let errorMessage = 'An unexpected error occurred.';
+        if (error.response) {
+          if (error.response.status === 400) {
+            errorMessage = 'Invalid credentials.';
+          } else if (error.response.status === 403) {
+            errorMessage = 'Account not approved.';
+          }
+        } else if (error.request) {
+          errorMessage = 'Could not connect to the server.';
+        }
+        setMessage(`Login Error: ${errorMessage}`);
+      } else {
+        console.error('An unexpected error occurred:', error);
+        let msg = 'An unknown error happened.';
+        if (error instanceof Error) {
+          msg = error.message;
+        }
+        setMessage(`Login Error: ${msg}`);
+      }
       setIsError(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,6 +119,7 @@ const UserLoginScreen = () => {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            editable={!isLoading}
           />
 
           <Text style={styles.inputLabel}>Password</Text>
@@ -100,10 +130,11 @@ const UserLoginScreen = () => {
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            editable={!isLoading}
           />
 
           <View style={styles.forgotPasswordContainer}>
-            <TouchableOpacity onPress={handleForgotPassword}>
+            <TouchableOpacity onPress={handleForgotPassword} disabled={isLoading}>
               <Text style={styles.forgotPasswordText}>
                 Forget password?
               </Text>
@@ -111,19 +142,24 @@ const UserLoginScreen = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleLogin}
+            disabled={isLoading}
           >
-            <Text style={styles.loginButtonText}>
-              Log in
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>
+                Log in
+              </Text>
+            )}
           </TouchableOpacity>
 
           {message && (
             <View
               style={[
                 styles.messageBox,
-                isError ? styles.errorBox : styles.successBox
+                isError ? styles.errorBox : styles.successBox,
               ]}
             >
               <Text style={isError ? styles.errorText : styles.successText}>
@@ -230,6 +266,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#9CA3AF',
   },
   loginButtonText: {
     color: '#fff',

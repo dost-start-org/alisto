@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import EmergencyButton from '../components/EmergencyButton';
 import BottomNav from '../components/BottomNav';
@@ -7,12 +13,26 @@ import TopNav from '../components/TopNavUserHome';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GridBackground from '../components/GridBackground';
 import CrowdsourceUserScreen from '../components/CrowdsourceUserScreen';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type UserProfile = {
+  id: string;
+  full_name: string;
+  authority_level: string;
+  contact_number: string;
+  address: string;
+  status: string;
+};
 
 export default function UserHome() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [clickCount, setClickCount] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const crowdsourceData = {
     id: 'report-12345',
@@ -21,15 +41,52 @@ export default function UserHome() {
     timestamp: '2025-10-20T02:46:00.000Z',
   };
 
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const savedToken = await SecureStore.getItemAsync('authToken');
+        const savedProfileString = await AsyncStorage.getItem('userProfile');
+
+        if (savedToken && savedProfileString) {
+          const loadedProfile = JSON.parse(savedProfileString);
+          console.log('--- USER PROFILE LOADED ---:', loadedProfile);
+          setProfile(loadedProfile);
+        } else {
+          router.replace('/');
+        }
+      } catch (e) {
+        console.error('Failed to load data, redirecting to login.', e);
+        router.replace('/');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [router, setProfile]);
+
   const handleSecretClick = () => {
     const newClickCount = clickCount + 1;
-    if (newClickCount >= 5) {
+
+    if (newClickCount === 5) {
+      console.log('--- 5-CLICK PROFILE LOG ---:', profile);
+      setClickCount(newClickCount);
+    } else if (newClickCount >= 10) {
       setIsModalVisible(true);
       setClickCount(0);
     } else {
       setClickCount(newClickCount);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -59,7 +116,6 @@ export default function UserHome() {
           </View>
         </View>
 
-
         <BottomNav
           onNavigate={(screen) => {
             router.push(`/${screen}`);
@@ -86,6 +142,11 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backgroundContainer: {
     position: 'absolute',
