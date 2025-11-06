@@ -110,6 +110,26 @@ SWAGGER_SETTINGS = {
         'patch'
     ],
 }
+# Swagger/OpenAPI settings
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Token-based authentication with required prefix. Format: `Token <your_token>`'
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'JSON_EDITOR': True,
+    'SUPPORTED_SUBMIT_METHODS': [
+        'get',
+        'post',
+        'put',
+        'delete',
+        'patch'
+    ],
+}
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
@@ -122,13 +142,19 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
+    'nstw_backend.middleware.ConditionalSessionMiddleware',  # Custom middleware to only use sessions for admin
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'nstw_backend.middleware.ConditionalCsrfMiddleware',  # Custom CSRF middleware to only apply to admin
+    'nstw_backend.middleware.ConditionalAuthMiddleware',  # Custom middleware to only use auth for admin
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Session configuration - only for Django admin
+SESSION_COOKIE_NAME = 'admin_sessionid'  # Different name to avoid conflicts
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_SAVE_EVERY_REQUEST = False  # Don't create sessions unnecessarily
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
@@ -161,7 +187,10 @@ WSGI_APPLICATION = 'nstw_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if DEBUG:
+# Use environment variable to control database type
+USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
+
+if USE_SQLITE:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
