@@ -169,7 +169,7 @@ class BaseLoginView(KnoxLoginView):
         if user is None:
             return Response({'error': 'invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
-    self._perform_login(request, user)
+        self._perform_login(request, user)
         token = AuthToken.objects.create(user)[1]
         return Response({
             'ok': True,
