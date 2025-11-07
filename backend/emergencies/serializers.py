@@ -8,14 +8,22 @@ class EmergencyTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'icon_type']
 
 class EmergencyReportSerializer(serializers.ModelSerializer):
+    image_base64 = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        source='image_url'
+    )
+
     class Meta:
         model = EmergencyReport
         fields = [
             'id', 'emergency_type', 'user', 'longitude', 'latitude',
             'details', 'verification_status', 'status', 'image_url',
-            'date_created'
+            'image_base64', 'date_created'
         ]
-        read_only_fields = ['id', 'user', 'verification_status', 'date_created']
+        read_only_fields = ['id', 'user', 'verification_status', 'date_created', 'image_url']
     
     def validate_longitude(self, value):
         # Philippines longitude range approximately: 116.93° to 126.34° E
@@ -34,8 +42,8 @@ class EmergencyReportSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Details must be at least 10 characters long")
         return value
 
-    def validate_image_url(self, value):
-        """Validate and process image_url field (accepts base64 or URL)"""
+    def validate_image_base64(self, value):
+        """Validate and process image_base64 field (accepts base64 or URL)"""
         if not value:
             return value
         
@@ -56,21 +64,29 @@ class EmergencyReportSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class EmergencyVerificationSerializer(serializers.ModelSerializer):
+    image_base64 = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        source='image_url'
+    )
+
     class Meta:
         model = EmergencyVerification
         fields = [
             'id', 'report', 'user', 'vote', 'details',
-            'image_url', 'date_created'
+            'image_url', 'image_base64', 'date_created'
         ]
-        read_only_fields = ['id', 'user', 'date_created']
+        read_only_fields = ['id', 'user', 'date_created', 'image_url']
 
     def validate_details(self, value):
         if value and len(value.strip()) < 5:
             raise serializers.ValidationError("Verification details must be at least 5 characters long")
         return value.strip() if value else value
 
-    def validate_image_url(self, value):
-        """Validate and process image_url field (accepts base64 or URL)"""
+    def validate_image_base64(self, value):
+        """Validate and process image_base64 field (accepts base64 or URL)"""
         if not value:
             return value
         

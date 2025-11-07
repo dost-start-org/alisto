@@ -2,9 +2,11 @@
 # Django imports
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.signals import user_logged_in
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 # Rest framework imports
@@ -124,6 +126,20 @@ class BaseLoginView(KnoxLoginView):
     throttle_classes = [throttling.ScopedRateThrottle]
     throttle_scope = 'login'
 
+    def _perform_login(self, request, user):
+        """Log the user in when a session is available, otherwise emulate login side effects."""
+        django_request = getattr(request, '_request', request)
+        session = getattr(django_request, 'session', None)
+
+        if session is not None:
+            login(django_request, user)
+            return
+
+        # Emulate session-less login for token-based authentication flows
+        user_logged_in.send(sender=user.__class__, request=django_request, user=user)
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+
     def get_user_profile_data(self, user):
         try:
             return {
@@ -153,7 +169,7 @@ class BaseLoginView(KnoxLoginView):
         if user is None:
             return Response({'error': 'invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
-        login(request, user)
+    self._perform_login(request, user)
         token = AuthToken.objects.create(user)[1]
         return Response({
             'ok': True,

@@ -7,6 +7,7 @@ from .models import EmergencyReport, EmergencyVerification, EmergencyType
 from agencies.models import Agency  # Import Agency model
 import uuid
 from rest_framework.exceptions import ErrorDetail, ValidationError
+from unittest.mock import patch
 
 class VerificationSystemTests(TestCase):
     def setUp(self):
@@ -194,6 +195,30 @@ class VerificationSystemTests(TestCase):
         # Check if the notification signal was triggered (mocked for now)
         # In a real test, you would use Django's mail.outbox to verify email sending
         self.assertEqual(self.report.status, 'Resolved')
+
+    @patch('emergencies.serializers.FileService.process_image_field')
+    def test_create_emergency_report_with_image_base64(self, mock_process_image_field):
+        mock_process_image_field.return_value = (True, 'https://example.com/uploaded.png')
+        url = reverse('emergency-report-list')
+        data = {
+            'emergency_type': str(self.report.emergency_type.id),
+            'longitude': 120.99,
+            'latitude': 14.60,
+            'details': 'Valid emergency details',
+            'image_base64': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA'
+        }
+
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(
+            response.data['data']['image_url'],
+            'https://example.com/uploaded.png'
+        )
+        mock_process_image_field.assert_called_once_with(
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA',
+            folder='emergency_reports'
+        )
 
 class EnhancedVerificationSystemTests(VerificationSystemTests):
     def test_verification_response_invalid_vote(self):

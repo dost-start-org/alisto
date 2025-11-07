@@ -172,7 +172,7 @@ class EmergencyReportList(generics.ListCreateAPIView):
                 'longitude': openapi.Schema(type=openapi.TYPE_NUMBER, description='Longitude of the emergency location'),
                 'latitude': openapi.Schema(type=openapi.TYPE_NUMBER, description='Latitude of the emergency location'),
                 'details': openapi.Schema(type=openapi.TYPE_STRING, description='Additional details about the emergency'),
-                'image_url': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image string (with or without data URL prefix) or an image URL')
+                'image_base64': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image string (with or without data URL prefix) or an image URL')
             }
         ),
         responses={
@@ -266,7 +266,7 @@ class EmergencyVerificationList(generics.ListCreateAPIView):
                 'report': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report to verify'),
                 'vote': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if verifying the emergency, False if denying'),
                 'details': openapi.Schema(type=openapi.TYPE_STRING, description='Additional details about the verification. Required when vote is False, must be at least 5 characters.'),
-                'image_url': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image string (with or without data URL prefix) or an image URL')
+                'image_base64': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image string (with or without data URL prefix) or an image URL')
             }
         ),
         responses={

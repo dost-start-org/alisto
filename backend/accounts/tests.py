@@ -1,8 +1,9 @@
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APIRequestFactory
 from django.core.cache import cache
 from rest_framework import status
+from accounts.views import UserLoginAPIView
 
 
 
@@ -170,6 +171,32 @@ class AccountsAPITest(TestCase):
 			'password': 'testpass123'
 		}, format='json')
 		self.assertEqual(resp.status_code, 200)
+
+	def test_login_without_session_middleware(self):
+		from accounts.models import User, UserProfile
+		email = 'sessionless@example.com'
+		password = 'testpass123'
+		user = User.objects.create_user(email=email, password=password)
+		UserProfile.objects.create(
+			user=user,
+			full_name='Session Less',
+			authority_level='User',
+			contact_number='1234567890',
+			date_of_birth='2000-01-01',
+			address='Test Address',
+			emergency_contact_name='Contact',
+			emergency_contact_number='0987654321',
+			status='approved',
+			email_verified=True
+		)
+		factory = APIRequestFactory()
+		request = factory.post(reverse('api_login'), {
+			'email': email,
+			'password': password
+		}, format='json')
+		response = UserLoginAPIView.as_view()(request)
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertIn('token', response.data)
 
 	def test_lgu_admin_can_list_and_approve_users(self):
 		# Register a pending user

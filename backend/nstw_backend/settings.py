@@ -122,16 +122,15 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'nstw_backend.middleware.ConditionalSessionMiddleware',  # Custom middleware to only use sessions for admin
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'nstw_backend.middleware.ConditionalCsrfMiddleware',  # Custom CSRF middleware to only apply to admin
-    'nstw_backend.middleware.ConditionalAuthMiddleware',  # Custom middleware to only use auth for admin
-    'nstw_backend.middleware.ConditionalMessageMiddleware',  # Custom message middleware to only apply to admin
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Session configuration - only for Django admin
-SESSION_COOKIE_NAME = 'admin_sessionid'  # Different name to avoid conflicts
+# Session configuration
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_SAVE_EVERY_REQUEST = False  # Don't create sessions unnecessarily
