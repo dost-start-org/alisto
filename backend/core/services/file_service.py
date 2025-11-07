@@ -3,11 +3,15 @@ File Service for handling image uploads to Cloudinary
 """
 import base64
 import io
+import logging
 import uuid
 from PIL import Image
 import cloudinary
 import cloudinary.uploader
 from django.conf import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class FileService:
@@ -18,8 +22,12 @@ class FileService:
         """Initialize Cloudinary configuration from Django settings"""
         if not hasattr(settings, 'CLOUDINARY_CONFIG'):
             return False
-        
-        config = settings.CLOUDINARY_CONFIG
+
+        config = settings.CLOUDINARY_CONFIG or {}
+        required_keys = ('CLOUD_NAME', 'API_KEY', 'API_SECRET')
+        if not all(config.get(key) for key in required_keys):
+            return False
+
         cloudinary.config(
             cloud_name=config.get('CLOUD_NAME'),
             api_key=config.get('API_KEY'),
@@ -108,7 +116,7 @@ class FileService:
             return False, f"Invalid image data: {str(e)}"
     
     @staticmethod
-    def upload_to_cloudinary(base64_string, folder='alisto'):
+    def upload_to_cloudinary(base64_string, folder='alisto', image_format='png', skip_validation=False):
         """
         Upload a base64 encoded image to Cloudinary
         Returns: (success, url_or_error_message)
@@ -118,24 +126,30 @@ class FileService:
             if not FileService.initialize_cloudinary():
                 return False, "Cloudinary not configured properly"
             
-            # Extract base64 data
-            base64_data, image_format = FileService.extract_base64_data(base64_string)
-            
-            # Validate image
-            is_valid, error_msg = FileService.validate_image(base64_data)
-            if not is_valid:
-                return False, error_msg
-            
+            # Extract base64 data and determine image format
+            if base64_string.startswith('data:'):
+                base64_data, detected_format = FileService.extract_base64_data(base64_string)
+                image_format = detected_format or image_format
+            else:
+                base64_data = base64_string
+
+            # Validate image when requested
+            if not skip_validation:
+                is_valid, error_msg = FileService.validate_image(base64_data)
+                if not is_valid:
+                    return False, error_msg
+
             # Generate unique filename
             filename = f"{uuid.uuid4()}.{image_format}"
-            
+
             # Prepare the data URL for Cloudinary
+            payload = base64_string
             if not base64_string.startswith('data:'):
-                base64_string = f"data:image/{image_format};base64,{base64_data}"
+                payload = f"data:image/{image_format};base64,{base64_data}"
             
             # Upload to Cloudinary
             result = cloudinary.uploader.upload(
-                base64_string,
+                payload,
                 folder=folder,
                 public_id=filename.split('.')[0],
                 resource_type='image',
@@ -164,9 +178,33 @@ class FileService:
         if FileService.is_url(image_data):
             return True, image_data
         
-        # If it's base64, upload to Cloudinary
+        # If it's base64, upload to Cloudinary (with fallback when unavailable)
         if FileService.is_base64(image_data):
-            return FileService.upload_to_cloudinary(image_data, folder)
+            base64_data, image_format = FileService.extract_base64_data(image_data)
+
+            # Validate image prior to attempting an upload
+            is_valid, error_msg = FileService.validate_image(base64_data)
+            if not is_valid:
+                return False, error_msg
+
+            success, result = FileService.upload_to_cloudinary(
+                base64_data,
+                folder=folder,
+                image_format=image_format,
+                skip_validation=True
+            )
+
+            if success:
+                return True, result
+
+            # Fallback to returning the base64 data URL when Cloudinary is unavailable
+            fallback_enabled = getattr(settings, 'ALLOW_INLINE_IMAGE_FALLBACK', True)
+            if fallback_enabled:
+                logger.warning("Cloudinary upload failed (%s). Using inline image fallback.", result)
+                data_url = image_data if image_data.startswith('data:') else f"data:image/{image_format};base64,{base64_data}"
+                return True, data_url
+
+            return False, result
         
         # Invalid format
         return False, "Image must be either a valid URL or base64 encoded string"

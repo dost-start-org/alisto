@@ -44,6 +44,12 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 ```
 
+If you're developing in an environment without outbound network access, you can optionally add the following Django setting to fall back to inline data URLs whenever Cloudinary cannot be reached:
+
+```python
+ALLOW_INLINE_IMAGE_FALLBACK = True  # defaults to True when not set
+```
+
 To get these credentials:
 
 1. Sign up at [Cloudinary](https://cloudinary.com/)

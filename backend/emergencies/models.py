@@ -124,22 +124,3 @@ class UserEvaluation(models.Model):
 
     def __str__(self):
         return f"Evaluation for {self.report.id}"
-
-@receiver(post_save, sender=EmergencyReport)
-def notify_report_status_change(sender, instance, **kwargs):
-    if kwargs.get('created', False):
-        # Notify reporter about the new report creation
-        send_mail(
-            subject='Emergency Report Submitted',
-            message=f'Your report {instance.id} has been submitted successfully.',
-            from_email='noreply@alisto.com',
-            recipient_list=[instance.user.email]
-        )
-    else:
-        # Notify reporter about status changes
-        send_mail(
-            subject='Emergency Report Status Update',
-            message=f'The status of your report {instance.id} has been updated to {instance.status}.',
-            from_email='noreply@alisto.com',
-            recipient_list=[instance.user.email]
-        )
