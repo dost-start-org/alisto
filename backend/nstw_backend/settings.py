@@ -146,7 +146,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'nstw_backend.middleware.ConditionalCsrfMiddleware',  # Custom CSRF middleware to only apply to admin
     'nstw_backend.middleware.ConditionalAuthMiddleware',  # Custom middleware to only use auth for admin
-    'django.contrib.messages.middleware.MessageMiddleware',
+    'nstw_backend.middleware.ConditionalMessageMiddleware',  # Custom message middleware to only apply to admin
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -260,3 +260,10 @@ AUTH_USER_MODEL = 'accounts.User'
 # JWT settings
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# Cloudinary Configuration
+CLOUDINARY_CONFIG = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME', ''),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY', ''),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET', ''),
+}

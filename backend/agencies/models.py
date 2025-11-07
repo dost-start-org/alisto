@@ -4,7 +4,7 @@ import uuid
 class Agency(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    logo_url = models.URLField(blank=True, null=True)
+    logo_url = models.TextField(blank=True, null=True)
     hotline_number = models.CharField(max_length=50)
     latitude = models.FloatField()
     longitude = models.FloatField()

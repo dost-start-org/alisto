@@ -6,6 +6,7 @@ from token-based authentication (for API endpoints).
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.auth.middleware import AuthenticationMiddleware
 from django.middleware.csrf import CsrfViewMiddleware
+from django.contrib.messages.middleware import MessageMiddleware
 
 
 class ConditionalSessionMiddleware(SessionMiddleware):
@@ -59,3 +60,21 @@ class ConditionalAuthMiddleware(AuthenticationMiddleware):
         from django.contrib.auth.models import AnonymousUser
         request.user = AnonymousUser()
         return None
+
+
+class ConditionalMessageMiddleware(MessageMiddleware):
+    """
+    Only enable message middleware for Django admin paths.
+    API endpoints don't need Django's message framework.
+    """
+    def process_request(self, request):
+        # Only enable messages for admin paths
+        if request.path.startswith('/admin/'):
+            return super().process_request(request)
+        return None
+
+    def process_response(self, request, response):
+        # Only process message response for admin paths
+        if request.path.startswith('/admin/'):
+            return super().process_response(request, response)
+        return response

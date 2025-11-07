@@ -45,7 +45,7 @@ class EmergencyReport(models.Model):
         choices=STATUS_CHOICES,
         default='Pending'
     )
-    image_url = models.URLField(null=True, blank=True)
+    image_url = models.TextField(null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
     responder = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -81,7 +81,7 @@ class EmergencyVerification(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     vote = models.BooleanField(null=True)
     details = models.TextField(null=True, blank=True)
-    image_url = models.URLField(null=True, blank=True)
+    image_url = models.TextField(null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

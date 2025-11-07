@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import EmergencyType, EmergencyReport, EmergencyVerification, UserEvaluation
+from core.services.file_service import FileService
 
 class EmergencyTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,14 +35,25 @@ class EmergencyReportSerializer(serializers.ModelSerializer):
         return value
 
     def validate_image_url(self, value):
-        if value:
-            # Basic URL validation
-            if not value.startswith(('http://', 'https://')):
-                raise serializers.ValidationError("Image URL must start with http:// or https://")
-            # Maximum length check
-            if len(value) > 2000:
-                raise serializers.ValidationError("Image URL is too long (max 2000 characters)")
-        return value
+        """Validate and process image_url field (accepts base64 or URL)"""
+        if not value:
+            return value
+        
+        # Process the image (uploads to Cloudinary if base64)
+        success, result = FileService.process_image_field(value, folder='emergency_reports')
+        
+        if not success:
+            raise serializers.ValidationError(result)
+        
+        return result
+    
+    def create(self, validated_data):
+        """Override create to handle image upload"""
+        return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        """Override update to handle image upload"""
+        return super().update(instance, validated_data)
 
 class EmergencyVerificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -58,12 +70,17 @@ class EmergencyVerificationSerializer(serializers.ModelSerializer):
         return value.strip() if value else value
 
     def validate_image_url(self, value):
-        if value:
-            if not value.startswith(('http://', 'https://')):
-                raise serializers.ValidationError("Image URL must start with http:// or https://")
-            if len(value) > 2000:
-                raise serializers.ValidationError("Image URL is too long (max 2000 characters)")
-        return value
+        """Validate and process image_url field (accepts base64 or URL)"""
+        if not value:
+            return value
+        
+        # Process the image (uploads to Cloudinary if base64)
+        success, result = FileService.process_image_field(value, folder='emergency_verifications')
+        
+        if not success:
+            raise serializers.ValidationError(result)
+        
+        return result
         
     def validate(self, data):
         # If voting false (denying), details should be required
