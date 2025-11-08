@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import EmergencyContact, ContactRedirection
+from .models import EmergencyContact, ContactRedirection, UserEmergencyContact
 from emergencies.serializers import EmergencyTypeSerializer
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
@@ -21,3 +21,8 @@ class EmergencyContactDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmergencyContact
         fields = ['id', 'name', 'contact_number', 'description', 'type', 'emergency_types']
+
+class UserEmergencyContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserEmergencyContact
+        fields = ['id', 'name', 'contact_number', 'relationship']
