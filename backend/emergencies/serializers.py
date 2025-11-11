@@ -8,6 +8,7 @@ class EmergencyTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'icon_type']
 
 class EmergencyReportSerializer(serializers.ModelSerializer):
+
     image_base64 = serializers.CharField(
         write_only=True,
         required=False,
@@ -16,14 +17,21 @@ class EmergencyReportSerializer(serializers.ModelSerializer):
         source='image_url'
     )
 
+    emergency_type_name = serializers.SerializerMethodField()
+
     class Meta:
         model = EmergencyReport
         fields = [
-            'id', 'emergency_type', 'user', 'longitude', 'latitude',
+            'id', 'emergency_type', 'emergency_type_name', 'user', 'longitude', 'latitude',
             'details', 'verification_status', 'status', 'image_url',
             'image_base64', 'date_created'
         ]
         read_only_fields = ['id', 'user', 'verification_status', 'date_created', 'image_url']
+
+    def get_emergency_type_name(self, obj):
+        if obj.emergency_type:
+            return obj.emergency_type.name
+        return None
     
     def validate_longitude(self, value):
         # Philippines longitude range approximately: 116.93° to 126.34° E
