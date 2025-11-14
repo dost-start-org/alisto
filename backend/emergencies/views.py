@@ -19,6 +19,11 @@ from .serializers import (
 )
 from agencies.models import Agency, AgencyEmergencyType
 from django.core.mail import send_mail
+from django.core.cache import cache
+from django.utils import timezone
+from datetime import timedelta
+from .models import CrowdsourceBroadcast
+
 
 class EmergencyTypeList(generics.ListCreateAPIView):
     """
@@ -279,7 +284,39 @@ class EmergencyVerificationList(generics.ListCreateAPIView):
         return super().post(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        verification = serializer.save(user=self.request.user)
+        # Mark user as responded in any active broadcasts for this report
+        from django.utils import timezone
+        from .models import CrowdsourceBroadcast
+        broadcasts = CrowdsourceBroadcast.objects.filter(
+            report=verification.report,
+            recipients=verification.user,
+            expires_at__gt=timezone.now()
+        )
+        for broadcast in broadcasts:
+            broadcast.responded_users.add(verification.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except ValidationError as e:
+            return Response({
+                'status': 'error',
+                'message': 'Validation failed',
+                'errors': e.detail
+            }, status=400)
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        # Determine confirmation status
+        confirmed = serializer.instance.vote is True
+        return Response({
+            'status': 'success',
+            'message': 'Emergency verification created successfully',
+            'data': serializer.data,
+            'confirmed': confirmed
+        }, status=201, headers=headers)
 
 class EmergencyVerificationDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = EmergencyVerification.objects.all()
@@ -342,7 +379,11 @@ class EmergencyVerificationDetail(generics.RetrieveUpdateDestroyAPIView):
             verification.save()
 
         serializer = self.get_serializer(verification)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        confirmed = verification.vote is True
+        return Response({
+            'data': serializer.data,
+            'confirmed': confirmed
+        }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_description="Delete an emergency verification",
@@ -543,7 +584,14 @@ class TriggerCrowdsourcingBroadcast(APIView):
             for agency in agencies_within_range
         ]
 
-        # Logic to trigger broadcast (e.g., WebSocket notification)
+        expires_at = timezone.now() + timedelta(minutes=5)
+        broadcast = CrowdsourceBroadcast.objects.create(
+            report=report,
+            expires_at=expires_at
+        )
+        broadcast.recipients.set(users_within_range)
+        broadcast.save()
+
         user_ids = [user.id for user in users_within_range]
 
         print(f"Users within range: {user_ids}")
@@ -552,7 +600,8 @@ class TriggerCrowdsourcingBroadcast(APIView):
         return Response({
             "message": "Broadcast triggered successfully.",
             "users": user_ids,
-            "notified_agencies": agency_notifications
+            "notified_agencies": agency_notifications,
+            "broadcast_id": str(broadcast.id)
         }, status=status.HTTP_200_OK)
 
 class MarkReportAsVerified(APIView):
@@ -726,3 +775,53 @@ class RespondToEmergency(APIView):
             'status': 'success',
             'message': 'The report has been marked as "Responded," and the reporter has been notified.'
         }, status=status.HTTP_200_OK)
+
+class CrowdsourcePollNotification(APIView):
+    """
+    Endpoint for mobile clients to poll for crowdsource broadcast signal.
+    Returns a notification if the authenticated user is included in an active broadcast.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Poll for crowdsource broadcast signal.",
+        tags=['Crowdsourcing'],
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'signal': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='True if user is included in broadcast'),
+                    'message': openapi.Schema(type=openapi.TYPE_STRING, description='Notification message if included'),
+                    'broadcast_data': openapi.Schema(type=openapi.TYPE_OBJECT, description='Optional broadcast details')
+                }
+            ),
+            401: "Authentication required"
+        }
+    )
+    def get(self, request):
+        user = request.user
+        from django.utils import timezone
+        from .models import CrowdsourceBroadcast
+
+        # Find active broadcasts for this user where they have not responded
+        active_broadcasts = CrowdsourceBroadcast.objects.filter(
+            recipients=user,
+            expires_at__gt=timezone.now()
+        ).exclude(responded_users=user)
+
+        if active_broadcasts.exists():
+            broadcast = active_broadcasts.first()
+            return Response({
+                'signal': True,
+                'message': 'You are included in the current broadcast.',
+                'broadcast_data': {
+                    'broadcast_id': str(broadcast.id),
+                    'expires_at': broadcast.expires_at,
+                    'report_id': str(broadcast.report.id)
+                }
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'signal': False,
+                'message': 'No broadcast for you at this time.'
+            }, status=status.HTTP_200_OK)
