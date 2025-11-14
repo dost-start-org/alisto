@@ -526,30 +526,23 @@ class TriggerCrowdsourcingBroadcast(APIView):
         print(f"Calculated distance: {distance} km between ({lat1}, {lon1}) and ({lat2}, {lon2})")
         return distance
 
-    @swagger_auto_schema(
-        operation_description="Trigger a crowdsourcing broadcast for an emergency report within a specific range.",
-        tags=['Crowdsourcing'],
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['report_id', 'range'],
-            properties={
-                'report_id': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='ID of the emergency report'),
-                'range': openapi.Schema(type=openapi.TYPE_NUMBER, description='Range in kilometers for the broadcast')
-            }
-        ),
-        responses={
-            200: "Broadcast triggered successfully",
-            404: "Emergency report not found",
-            401: "Authentication required"
-        }
-    )
     def post(self, request):
-        report_id = request.data.get('report_id')
-        broadcast_range = request.data.get('range', 5)  # Default range is 5 km
+        from .serializers import TriggerCrowdsourcingBroadcastSerializer
+        serializer = TriggerCrowdsourcingBroadcastSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report_id = serializer.validated_data.get('report_id')
+        broadcast_range = serializer.validated_data.get('range', 99999)
 
         # Validate the emergency report
         report = get_object_or_404(EmergencyReport, id=report_id)
         report_lat, report_lon = report.latitude, report.longitude
+
+        # Check for missing report location data
+        if report_lat is None or report_lon is None:
+            print(f"[CrowdsourcingBroadcast] ERROR: EmergencyReport {report_id} missing latitude/longitude.")
+            return Response({
+                "error": "Emergency report is missing location data (latitude/longitude)."
+            }, status=400)
 
         # Filter all user profiles within the specified range
         user_profiles = UserProfile.objects.filter(status='approved')
@@ -559,8 +552,12 @@ class TriggerCrowdsourcingBroadcast(APIView):
             users_within_range = []
         else:
             for profile in user_profiles:
+                # Check for missing user profile location data
+                if profile.latitude is None or profile.longitude is None:
+                    print(f"[CrowdsourcingBroadcast] WARNING: UserProfile {profile.user.id} missing latitude/longitude. Skipping.")
+                    continue
                 distance = self.haversine_distance(report_lat, report_lon, profile.latitude, profile.longitude)
-                print(f"User {profile.user.id}: Distance = {distance} km")
+                print(f"User {profile.user.email}: Distance = {distance} km")
                 if distance <= broadcast_range:
                     users_within_range.append(profile.user)
 
@@ -570,6 +567,10 @@ class TriggerCrowdsourcingBroadcast(APIView):
         )
         agencies_within_range = []
         for agency in relevant_agencies:
+            # Check for missing agency location data
+            if agency.latitude is None or agency.longitude is None:
+                print(f"[CrowdsourcingBroadcast] WARNING: Agency {agency.name} missing latitude/longitude. Skipping.")
+                continue
             distance = self.haversine_distance(report_lat, report_lon, agency.latitude, agency.longitude)
             print(f"Agency {agency.name}: Distance = {distance} km")
             if distance <= broadcast_range:
@@ -580,8 +581,7 @@ class TriggerCrowdsourcingBroadcast(APIView):
             {
                 "agency_name": agency.name,
                 "hotline_number": agency.hotline_number
-            }
-            for agency in agencies_within_range
+            } for agency in agencies_within_range
         ]
 
         expires_at = timezone.now() + timedelta(minutes=5)
@@ -592,14 +592,13 @@ class TriggerCrowdsourcingBroadcast(APIView):
         broadcast.recipients.set(users_within_range)
         broadcast.save()
 
-        user_ids = [user.id for user in users_within_range]
-
-        print(f"Users within range: {user_ids}")
+        user_emails = [user.email for user in users_within_range]
+        print(f"Users within range: {user_emails}")
         print(f"Notified agencies: {agency_notifications}")
 
         return Response({
             "message": "Broadcast triggered successfully.",
-            "users": user_ids,
+            "users": user_emails,
             "notified_agencies": agency_notifications,
             "broadcast_id": str(broadcast.id)
         }, status=status.HTTP_200_OK)
