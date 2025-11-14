@@ -236,7 +236,7 @@ class ResponderLoginAPIView(BaseLoginView):
             type=openapi.TYPE_OBJECT,
             required=['email', 'password'],
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='Responder email address'),
+                    'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='Responder email address', default='responder@example.com'),
                 'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='Responder password'),
             }
         ),
