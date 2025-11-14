@@ -4,7 +4,8 @@ from .views import (
     EmergencyReportList, EmergencyReportDetail,
     EmergencyVerificationList, EmergencyVerificationDetail,
     UserEvaluationList, UserEvaluationDetail,
-    TriggerCrowdsourcingBroadcast, MarkReportAsVerified
+    TriggerCrowdsourcingBroadcast, MarkReportAsVerified,
+    CrowdsourcePollNotification
 )
 
 urlpatterns = [
@@ -18,4 +19,5 @@ urlpatterns = [
     path('evaluations/<uuid:pk>/', UserEvaluationDetail.as_view(), name='user-evaluation-detail'),
     path('crowdsourcing/broadcast/', TriggerCrowdsourcingBroadcast.as_view(), name='trigger-crowdsourcing-broadcast'),
     path('crowdsourcing/mark-verified/', MarkReportAsVerified.as_view(), name='mark-report-as-verified'),
+    path('crowdsourcing/poll/', CrowdsourcePollNotification.as_view(), name='crowdsource-poll-notification'),
 ]
