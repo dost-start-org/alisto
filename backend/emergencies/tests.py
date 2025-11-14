@@ -10,6 +10,82 @@ from rest_framework.exceptions import ErrorDetail, ValidationError
 from unittest.mock import patch
 
 class VerificationSystemTests(TestCase):
+    def test_crowdsourcing_poll_notification_expires(self):
+        """Test that a user receives a notification when included in a broadcast and that it expires."""
+        from emergencies.models import CrowdsourceBroadcast
+        from django.utils import timezone
+        url_broadcast = reverse('trigger-crowdsourcing-broadcast')
+        url_poll = reverse('crowdsource-poll-notification')
+
+        # Trigger broadcast for user2 (nearby)
+        data = {
+            'report_id': str(self.report.id),
+            'range': 1.0
+        }
+        self.client.force_authenticate(user=self.user2)
+        response = self.client.post(url_broadcast, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        broadcast_id = response.data['broadcast_id']
+
+        # Poll for notification (should receive it)
+        response = self.client.get(url_poll)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['signal'])
+        self.assertIn('broadcast_data', response.data)
+        self.assertEqual(response.data['broadcast_data']['broadcast_id'], broadcast_id)
+
+        # Simulate expiration
+        broadcast = CrowdsourceBroadcast.objects.get(id=broadcast_id)
+        broadcast.expires_at = timezone.now() - timezone.timedelta(minutes=1)
+        broadcast.save()
+
+        # Poll again (should not receive notification)
+        response = self.client.get(url_poll)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['signal'])
+    def test_verification_create_includes_confirmed_field(self):
+        """Test that creating a verification includes the 'confirmed' field in the response."""
+        url = reverse('emergency-verification-list')
+        data = {
+            'report': str(self.report.id),
+            'vote': True
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('confirmed', response.data)
+        self.assertTrue(response.data['confirmed'])
+
+        # Now test with vote=False (must provide details)
+        data_false = {
+            'report': str(self.report.id),
+            'vote': False,
+            'details': 'Denial reason'  # At least 5 characters
+        }
+        response = self.client.post(url, data_false, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('confirmed', response.data)
+        self.assertFalse(response.data['confirmed'])
+
+    def test_verification_patch_includes_confirmed_field(self):
+        """Test that updating a verification includes the 'confirmed' field in the response."""
+        everification = EmergencyVerification.objects.create(
+            report=self.report,
+            user=self.user,
+            vote=None
+        )
+        url = reverse('emergency-verification-detail', kwargs={'pk': everification.id})
+        data = {'vote': True}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('confirmed', response.data)
+        self.assertTrue(response.data['confirmed'])
+
+        # Now test with vote=False
+        data['vote'] = False
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('confirmed', response.data)
+        self.assertFalse(response.data['confirmed'])
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(email='user1@example.com', password='pass')
