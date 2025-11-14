@@ -141,3 +141,13 @@ class UserEvaluationSerializer(serializers.ModelSerializer):
                 "improvement_suggestion": "Please provide improvement suggestions for low ratings"
             })
         return data
+    
+class TriggerCrowdsourcingBroadcastSerializer(serializers.Serializer):
+    report_id = serializers.UUIDField(required=True)
+    range = serializers.FloatField(required=False, allow_null=True, default=99999)
+
+    def validate(self, data):
+        # Only handle explicit nulls; DRF's default handles missing field
+        if data.get('range') is None:
+            data['range'] = 99999
+        return data
