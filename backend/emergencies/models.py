@@ -124,3 +124,17 @@ class UserEvaluation(models.Model):
 
     def __str__(self):
         return f"Evaluation for {self.report.id}"
+class CrowdsourceBroadcast(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    report = models.ForeignKey('EmergencyReport', on_delete=models.CASCADE, related_name='broadcasts')
+    recipients = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='crowdsource_broadcasts')
+    responded_users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='crowdsource_broadcast_responses', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_active(self):
+        from django.utils import timezone
+        return self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f"Broadcast for report {self.report.id} (expires {self.expires_at})"
